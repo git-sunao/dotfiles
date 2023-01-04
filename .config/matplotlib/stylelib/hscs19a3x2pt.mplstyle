@@ -1,0 +1,4 @@
+# This is the style file for HSC S19A 3x2pt analyses
+# Load this along with hscs19acosmo.mplstyle
+
+axes.prop_cycle: cycler('color', ['252c8d', 'ed611e', '0e7003', 'ac171f', '9700ff', 'ae7b26', 'ff7d9c', 'c01e62', '3d3d3d', 'fecc2e', '52bcbc'])

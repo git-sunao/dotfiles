@@ -1,0 +1,20 @@
+# Author: Sunao Sugiyama
+# This is the matplotlib style sheet for HSC S19A analyses.
+
+font.family: serif
+font.size: 17
+font.serif: STIXGeneral
+
+axes.linewidth: 1.5
+xtick.top: True
+ytick.right: True
+xtick.minor.visible: True
+ytick.minor.visible: True
+xtick.direction: in
+ytick.direction: in
+xtick.major.size:    4.5     # major tick size in points
+xtick.minor.size:    3       # minor tick size in points
+xtick.major.width:   1.0     # major tick width in points
+xtick.minor.width:   0.8     # minor tick width in points
+
+text.usetex: True

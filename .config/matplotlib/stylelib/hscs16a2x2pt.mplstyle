@@ -1,0 +1,18 @@
+# Author: Sunao Sugiyama
+# This is the matplotlib style sheet for HSC S16A 2x2pt analyses, Sugiyama+ (2022) and Miyatake+ (2022).
+
+font.family: serif
+font.size: 17
+font.serif: STIXGeneral
+
+axes.linewidth: 1.5
+xtick.top: True
+ytick.right: True
+xtick.minor.visible: True
+ytick.minor.visible: True
+xtick.direction: in
+ytick.direction: in
+
+text.usetex: True
+
+axes.prop_cycle: cycler('color', ['252c8d', 'ed611e', '0e7003', 'ac171f', '9700ff', 'ae7b26', 'ff7d9c', 'c01e62', '3d3d3d', 'fecc2e', '52bcbc'])
