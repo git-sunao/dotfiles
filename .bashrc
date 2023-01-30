@@ -51,6 +51,7 @@ function share_history {
 
 PROMPT_COMMAND='share_history'
 shopt -u histappend
+shopt -s histverify
 export HISTSIZE=2000
 
 # 
@@ -59,19 +60,20 @@ if which rbenv > /dev/null; then
 	eval "$(rbenv init -)"; 
 fi
 
-# python packages
-PKGPATH=${HOME}/Documents/python_package
-#export $HOME/Documents/python_package/HSCWLsimulations/dark_emulator:$PYTHONPATH
-#export $HOME/Documents/python_package/pyhalofit:$PYTHONPATH
-#export $HOME/Documents/python_package/CLASS-PT:$PYTHONPATH
-#export $HOME/Documents/python_package/FAST-PT:$PYTHONPATH
-#export $HOME/Documents/python_package:$PYTHONPATH
-#export $HOME/Documents/python_package/dark_emulator_public/:$PYTHONPATH
-#export $HOME/Documents/python_package/CAMB-1.0.2:$PYTHONPATH
-#export $HOME/Documents/python_package/colossus:$PYTHONPATH
-# needed for PolyChord compilation
+# packages
+PKGPATH=${HOME}/Documents/packages
+## pythonpath
+#export PYTHONPATH=$PKGPATH:$PYTHONPATH
+#export PYTHONPATH=$PKGPATH/HSCWLsimulations/dark_emulator:$PYTHONPATH
+#export PYTHONPATH=$PKGPATH/pyhalofit:$PYTHONPATH
+#export PYTHONPATH=$PKGPATH/CLASS-PT:$PYTHONPATH
+#export PYTHONPATH=$PKGPATH/FAST-PT:$PYTHONPATH
+#export PYTHONPATH=$PKGPATH/dark_emulator_public/:$PYTHONPATH
+#export PYTHONPATH=$PKGPATH/CAMB-1.0.2:$PYTHONPATH
+#export PYTHONPATH=$PKGPATH/colossus:$PYTHONPATH
+#export PYTHONPATH=${PKGPATH}/tkhtmlview:$PYTHONPATH
+export PYTHONPATH=${PKGPATH}/PyMultiNest:$PYTHONPATH
+export PYTHONPATH=${PKGPATH}/tk_html_widgets:$PYTHONPATH
+## others
 #export /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include:$CPATH
 #export $(xcrun --sdk macosx --show-sdk-path):$SDKROOT
-export PYTHONPATH=${PKGPATH}/PyMultiNest:$PYTHONPATH
-#export PYTHONPATH=${PKGPATH}/tkhtmlview:$PYTHONPATH
-export PYTHONPATH=${PKGPATH}/tk_html_widgets:$PYTHONPATH
