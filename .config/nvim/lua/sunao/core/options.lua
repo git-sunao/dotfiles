@@ -34,3 +34,14 @@ opt.clipboard:append("unnamedplus")
 -- split window
 opt.splitright = true
 opt.splitbelow = true
+
+-- start at the same line as we edits last time
+vim.cmd([[
+  augroup vimrc
+    autocmd!
+    autocmd BufReadPost *
+          \ if line("'\"") > 1 && line("'\"") <= line("$") |
+          \   execute 'normal! g`"zvzz' |
+          \ endif
+  augroup END
+]])
