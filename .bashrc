@@ -64,7 +64,7 @@ eval "$(rbenv init -)"
 
 ## Path
 export PATH="/opt/cisco/anyconnect/bin:${PATH}"
-export PATH="${HOME}/.cmds:${PATH}"
+export PATH="${HOME}/.scripts:${PATH}"
 
 export LDFLAGS="-L/usr/local/opt/llvm/lib"
 export CPPFLAGS="-I/usr/local/opt/llvm/include"

@@ -78,8 +78,8 @@ return packer.startup(function(use)
 	use("onsails/lspkind.nvim")
 
 	-- formatting & linting
-	use("jose-elias-alvarez/null-ls.nvim")
-	use("jayp0521/mason-null-ls.nvim")
+	-- use("jose-elias-alvarez/null-ls.nvim")
+	-- use("jayp0521/mason-null-ls.nvim")
 
 	-- markdown preview
 	use({ "iamcco/markdown-preview.nvim", run = "cd app && npm install", ft = { "markdown" } })
