@@ -1,6 +1,6 @@
 ## Apperence
 #prompto
-PS1='\[\e[1;33m\]sunao:\[\e[m\]\[\e[1;36m\]\t \w \$ \[\e[m\]'
+PS1='\[\e[1;33m\]sunao:\[\e[m\]\[\e[1;36m\]\t \W \$ \[\e[m\]'
 
 # colorized ls
 export LSCOLORS=exfxcxdxbxegedabagacad
