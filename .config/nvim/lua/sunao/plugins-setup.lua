@@ -62,9 +62,9 @@ return packer.startup(function(use)
 	use("hrsh7th/cmp-path")
 
 	-- snippets
-	use("L3MON4D3/LuaSnip")
-	use("saadparwaiz1/cmp_luasnip")
-	use("rafamadriz/friendly-snippets")
+	-- use("L3MON4D3/LuaSnip")
+	-- use("saadparwaiz1/cmp_luasnip")
+	-- use("rafamadriz/friendly-snippets")
 
 	-- managing & installing lsp sservers, linters & formatters
 	use("williamboman/mason.nvim")
@@ -82,7 +82,7 @@ return packer.startup(function(use)
 	-- use("jayp0521/mason-null-ls.nvim")
 
 	-- markdown preview
-	use({ "iamcco/markdown-preview.nvim", run = "cd app && npm install", ft = { "markdown" } })
+	-- use({ "iamcco/markdown-preview.nvim", run = "cd app && npm install", ft = { "markdown" } })
 
 	-- latex
 	use("lervag/vimtex")
