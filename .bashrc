@@ -83,6 +83,8 @@ function ipmuimac (){
   unset __conda_setup
   # Alias
   alias gow="cd ${HOME}/Documents/projects"
+  # Prompto
+  PS1='\[\e[1;33m\][sunao:\[\e[m\]\[\e[1;36m\]\t] \$ \[\e[m\]'
 }
 
 # idark server at ipmu
@@ -109,9 +111,7 @@ function idark () {
   # Run script to setup compiler and mpi
   for script in $SCRIPTDIR/$COMPILER/*.sh $SCRIPTDIR/$COMPILER/$MPI/*.sh $SCRIPTDIR/*.sh
   do
-      if [ -r $script ]; then
-      . $script
-    fi
+      [ -r $script ] && . $script
   done
   # Set env viriable
   export OMP_NUM_THREADS=1
@@ -123,7 +123,7 @@ function idark () {
   # neovim
   export PATH=${HOME}/.nvim/:$PATH
   # Prompto
-  PS1='($CONDA_DEFAULT_ENV) \[\e[1;35m\][idark:\[\e[m\]\[\e[1;36m\]\t] \$ \[\e[m\]'
+  PS1='\[\e[1;35m\][idark:\[\e[m\]\[\e[1;36m\]\t] \$ \[\e[m\]'
 }
 
 case "$HOSTNAME" in
