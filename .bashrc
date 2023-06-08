@@ -50,13 +50,20 @@ function sunaoair (){
       fi
   fi
   unset __conda_setup
+  # rbenv
+  eval "$(rbenv init -)"
   # Path 
   export PATH="/opt/cisco/anyconnect/bin:${PATH}"
   export LDFLAGS="-L/usr/local/opt/llvm/lib"
   export CPPFLAGS="-I/usr/local/opt/llvm/include"
   # Alias
   alias gow="cd ${HOME}/Documents/projects"
-  alias clamscanall="clamscan ~/ --recursive --infected"
+  alias clamscanall="clamscan ~/ --recursiv"
+  # pyenv
+  ## set PYENV_ROOT /usr/local/Cellar/pyenv/1.2.18/bin/pyenv $PYENV_ROOT
+  # export PYENV_ROOT=$HOME/.pyenv:$PYENV_ROOT
+  # export PATH=$PYENV_ROOT/bin:$PATH
+  # eval "$(pyenv init -)"
 }
 
 function idark () {
@@ -78,12 +85,4 @@ case "$HOSTNAME" in
 esac
 
 
-# pyenv
-## set PYENV_ROOT /usr/local/Cellar/pyenv/1.2.18/bin/pyenv $PYENV_ROOT
-# export PYENV_ROOT=$HOME/.pyenv:$PYENV_ROOT
-# export PATH=$PYENV_ROOT/bin:$PATH
-# eval "$(pyenv init -)"
-
-# rbenv
-eval "$(rbenv init -)"
 
