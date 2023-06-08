@@ -37,6 +37,7 @@ export PATH="${HOME}/.scripts/scripts:${PATH}"
 # Environmental dependent setups
 ##################################
 function sunaoair (){
+  # Macbook air
   # conda initialize
   # !! Contents within this block are managed by 'conda init' !!
   __conda_setup="$('/Users/sugiyamasunao/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
@@ -66,6 +67,24 @@ function sunaoair (){
   # eval "$(pyenv init -)"
 }
 
+function ipmuimac (){
+  # iMac provided by ipmu
+  # conda initialize
+  # !! Contents within this block are managed by 'conda init' !!
+  __conda_setup="$('/Users/sunao-mac/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+  if [ $? -eq 0 ]; then
+      eval "$__conda_setup"
+  else
+      if [ -f "/Users/sunao-mac/miniconda3/etc/profile.d/conda.sh" ]; then
+          . "/Users/sunao-mac/miniconda3/etc/profile.d/conda.sh"
+      else
+          export PATH="/Users/sunao-mac/miniconda3/bin:$PATH"
+      fi
+  fi
+  unset __conda_setup
+  
+}
+
 function idark () {
   echo hello
 }
@@ -81,6 +100,7 @@ case "$HOSTNAME" in
   "gw1.local"     ) gw1;;
   "fe"            ) gfarm;;
   "sunaoair.local") sunaoair;;
+  "ipmuimac.local") ipmuimac;;
   *) echo "We do not support the server: $HOSTNAME";;
 esac
 
