@@ -3751,7 +3751,7 @@
 	<key>TabStyleWithAutomaticOption</key>
 	<integer>5</integer>
 	<key>TabViewType</key>
-	<integer>2</integer>
+	<integer>0</integer>
 	<key>ToolbeltTools</key>
 	<array>
 		<string>Profiles</string>
