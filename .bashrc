@@ -86,8 +86,6 @@ function ipmuimac (){
   PS1='\[\e[1;33m\][sunao:\[\e[m\]\[\e[1;36m\]\t] \$ \[\e[m\]'
   # Alias
   alias gow="cd ${HOME}/Documents/projects"
-  # Prompto
-  PS1='\[\e[1;33m\][sunao:\[\e[m\]\[\e[1;36m\]\t] \$ \[\e[m\]'
 }
 
 # idark server at ipmu
