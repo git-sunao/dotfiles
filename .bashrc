@@ -4,6 +4,7 @@
 
 # colorized ls
 export LSCOLORS=exfxcxdxbxegedabagacad
+alias ls='ls -G'
 alias ll='ls -l'
 
 # bash command history is saved, but identical ones are ignored
@@ -81,6 +82,8 @@ function ipmuimac (){
       fi
   fi
   unset __conda_setup
+  # Prompto
+  PS1='\[\e[1;33m\][sunao:\[\e[m\]\[\e[1;36m\]\t] \$ \[\e[m\]'
   # Alias
   alias gow="cd ${HOME}/Documents/projects"
   # Prompto
