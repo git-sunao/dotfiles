@@ -1,3 +1,11 @@
 [user]
 	name = git-sunao
 	email = sunaosugiyama@gmail.com
+[color "status"]
+  added = yellow
+  changed = green
+  untracked = cyan
+[init]
+	defaultBranch = main
+[alias]
+  graph = log --graph --date-order -C -M --pretty=format:\"<%h> %ad [%an] %Cgreen%d%Creset %s\" --all --date=short
