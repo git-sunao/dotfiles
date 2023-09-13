@@ -67,28 +67,6 @@ function sunaoair (){
   # eval "$(pyenv init -)"
 }
 
-# iMac provided by ipmu
-function ipmuimac (){
-  # conda initialize
-  # !! Contents within this block are managed by 'conda init' !!
-  __conda_setup="$('/Users/sunao-mac/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
-  if [ $? -eq 0 ]; then
-      eval "$__conda_setup"
-  else
-      if [ -f "/Users/sunao-mac/miniconda3/etc/profile.d/conda.sh" ]; then
-          . "/Users/sunao-mac/miniconda3/etc/profile.d/conda.sh"
-      else
-          export PATH="/Users/sunao-mac/miniconda3/bin:$PATH"
-      fi
-  fi
-  unset __conda_setup
-  # Prompto
-  PS1='\[\e[1;33m\][sunao:\[\e[m\]\[\e[1;36m\]\t] \$ \[\e[m\]'
-  # Alias
-  alias ls='ls -G'
-  alias gow="cd ${HOME}/Documents/projects"
-}
-
 # idark server at ipmu
 function idark () {
   # source the local bashrc for idark.
