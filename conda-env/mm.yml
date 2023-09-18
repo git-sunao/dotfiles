@@ -1,0 +1,16 @@
+name: mm
+
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+
+dependencies:
+  - jupyterlab
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - george
+  - ipykernel
+

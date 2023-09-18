@@ -81,12 +81,12 @@ function idark () {
   PS1='\[\e[1;35m\][idark:\[\e[m\]\[\e[1;36m\]\t] \$ \[\e[m\]'
 }
 
-case "$HOSTNAME" in
+local_hostname=`scutil --get LocalHostName`
+case "$local_hostname" in
   "idark"         ) idark;;
   "gw1.local"     ) gw1;;
   "fe"            ) gfarm;;
-  "sunaoair.local") sunaoair;;
-  "ipmuimac.local") ipmuimac;;
+  "sunaomac") sunaoair;;
   *) echo "We do not support the server: $HOSTNAME";;
 esac
-
+unset local_hostname

@@ -1,0 +1,23 @@
+name: cosmo
+
+channels:
+  - anaconda
+  - conda-forge
+  - pytorch
+  - nishimichi
+  - defaults
+
+dependencies:
+  - jupyterlab
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - george
+  - ipykernel
+  - pymultinest
+  - multinest
+  - mpmath
+  - jax
+  - dark_emulator
+  - pytorch
