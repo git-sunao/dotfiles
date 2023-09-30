@@ -11,6 +11,6 @@ dependencies:
   - scipy
   - pandas
   - matplotlib
-  - george
   - ipykernel
+  - mamba
 

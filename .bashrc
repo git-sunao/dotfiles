@@ -81,7 +81,15 @@ function idark () {
   PS1='\[\e[1;35m\][idark:\[\e[m\]\[\e[1;36m\]\t] \$ \[\e[m\]'
 }
 
-local_hostname=`scutil --get LocalHostName`
+
+# Get HOSTNAME
+if command -v scutil > /dev/null 2>&1; then
+  local_hostname=`scutil --get LocalHostName`
+else
+  local_hostname=$HOSTNAME
+fi
+
+# Setup
 case "$local_hostname" in
   "idark"         ) idark;;
   "gw1.local"     ) gw1;;

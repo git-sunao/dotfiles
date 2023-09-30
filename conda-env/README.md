@@ -3,3 +3,9 @@ When you want to make a new environment yml file based on (an)other yaml file(s)
 2. use `conda-merge` command, which merges multiple yaml files into one: `conda-merge f1.yml f2.yml > fnew.yml`,
 3. modify the environment name in the new yml file,
 4. and finally create the environment with the conda command: `conda env create -f fnew.yml`
+
+If you want to add the environment to the ipykernels on jupyter, you can run
+```bash
+python -m ipykernel install --user --name=mm
+```
+Note that you need to install `ipykernel` package on the environment and activate the environment prior to run this command
