@@ -11,6 +11,7 @@ else
 fi
 # Setup for each host
 if [ "$HOSTNAME_TEMP" = "sunaomac" ]; then
+    # Local computer macbook air
     export WORKDIR="${HOME}/documents/projects"
     export PACKDIR="${HOME}/documents/packages"
     export CONDDIR="${HOME}/miniconda3"
@@ -19,18 +20,27 @@ if [ "$HOSTNAME_TEMP" = "sunaomac" ]; then
     export PATH="/opt/cisco/anyconnect/bin:${PATH}"
     export LDFLAGS="-L/usr/local/opt/llvm/lib"
     export CPPFLAGS="-I/usr/local/opt/llvm/include"
-elif [ "$HOSTNAME_TEMP" = "idark" ]; then
+elif [ "$HOSTNAME_TEMP" = "idark" ] || [[ "$HOSTNAME_TEMP" == *ansys* ]]; then
+    # IPMU cluster idark
     [ -f /etc/bashrc ] && . /etc/bashrc
     export WORKDIR="/lustre/work/sunao.sugiyama/"
     export PACKDIR="/lustre/work/sunao.sugiyama/package"
     export CONDDIR="/home/anaconda3"
     PROMPT_COLOR="\e[1;35m"
-elif [ "$HOSTNAME_TEMP" = "gw1.local" ]; then
+elif [ "$HOSTNAME_TEMP" = "gw1.local" ] || [[ "$HOSTNAME_TEMP" == *hpcs* ]]; then
+    # IPMU cluster gw
+    [ -f /etc/bashrc ] && . /etc/bashrc
+    export WORKDIR="/work/sunao.sugiyama/"
+    export PACKDIR="/work/sunao.sugiyama/package"
+    export CONDDIR="/home/anaconda3"
+    PROMPT_COLOR="\e[0;32m"
+elif [ "$HOSTNAME_TEMP" = "fe" ] || [[ "$HOSTNAME_TEMP" == *ansys* ]]; then
+    # IPMU cluster gfarm
     [ -f /etc/bashrc ] && . /etc/bashrc
     export WORKDIR="/gpfs02/work/sunao.sugiyama/"
     export PACKDIR="/gpfs02/work/sunao.sugiyama/package"
     export CONDDIR="/home/anaconda3"
-    PROMPT_COLOR="\e[0;32m"
+    PROMPT_COLOR="\e[0;31m"
 else
     # Default settings
     echo "No settings for $HOSTNAME_TEMP"
