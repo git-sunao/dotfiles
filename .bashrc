@@ -46,7 +46,7 @@ export PATH=${HOME}/.nvim/:$PATH
 if [[ "$OSTYPE" == "darwin"* ]]; then
     export LSCOLORS=exfxcxdxbxegedabagacad
 else
-    export LS_COLORS=exfxcxdxbxegedabagacad
+    export LS_COLORS="BD:CA:EX:FX:DI:DO:LC:LE:PI:SO:PI:DO"
 fi
 
 # Ignore duplicate commands in the history
