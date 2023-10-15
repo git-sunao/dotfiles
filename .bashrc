@@ -26,8 +26,8 @@ elif [ "$HOSTNAME_TEMP" = "idark" ]; then
     PROMPT_COLOR="\e[1;35m"
 elif [ "$HOSTNAME_TEMP" = "gw1.local" ]; then
     [ -f /etc/bashrc ] && . /etc/bashrc
-    export WORKDIR="/work/sunao.sugiyama/"
-    export PACKDIR="/work/sunao.sugiyama/package"
+    export WORKDIR="/gpfs02/work/sunao.sugiyama/"
+    export PACKDIR="/gpfs02/work/sunao.sugiyama/package"
     export CONDDIR="/home/anaconda3"
     PROMPT_COLOR="\e[0;32m"
 else
@@ -40,7 +40,7 @@ PS1="\[$PROMPT_COLOR\][$HOSTNAME_TEMP:\[\e[m\]\[\e[1;36m\]\t] \$ \[\e[m\]"
 # Common settings
 
 # Neovim
-#export PATH=${HOME}/.nvim/:$PATH
+export PATH=${HOME}/.nvim/:$PATH
 
 # colorized ls (for macOS)
 if [[ "$OSTYPE" == "darwin"* ]]; then
