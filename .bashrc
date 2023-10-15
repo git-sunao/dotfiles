@@ -25,8 +25,11 @@ elif [ "$HOSTNAME_TEMP" = "idark"]; then
     export PACKDIR="/lustre/work/sunao.sugiyama/package"
     export CONDDIR="/home/anaconda3"
     #export PATH=${HOME}/.nvim/:$PATH
-    alias sqstat="qstat | grep sunao"
-    alias sqstatn="qstat -n | grep sunao"
+elif [ "$HOSTNAME_TEMP" = "fe"]; then
+    export WORKDIR="/work/sunao.sugiyama/"
+    export PACKDIR="/work/sunao.sugiyama/package"
+    export CONDDIR="/home/anaconda3"
+    #export PATH=${HOME}/.nvim/:$PATH
 else
     # Default settings
     echo "No settings for $HOSTNAME_TEMP"
@@ -54,6 +57,14 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     if [ -r "/usr/local/etc/profile.d/bash_completion.sh" ]; then
     . "/usr/local/etc/profile.d/bash_completion.sh"
     fi
+fi
+
+# PBS-related alias 
+if which qstat &>/dev/null; then
+    alias mypbsqstat="qstat"
+fi
+if which qsub &>/dev/null; then
+    alias mypbsqsub="qsub"
 fi
 
 # Conda setup
