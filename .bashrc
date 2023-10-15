@@ -20,6 +20,7 @@ if [ "$HOSTNAME_TEMP" = "sunaomac" ]; then
     export LDFLAGS="-L/usr/local/opt/llvm/lib"
     export CPPFLAGS="-I/usr/local/opt/llvm/include"
 elif [ "$HOSTNAME_TEMP" = "idark" ]; then
+    [ -f /etc/bashrc ] && . /etc/bashrc
     export WORKDIR="/lustre/work/sunao.sugiyama/"
     export PACKDIR="/lustre/work/sunao.sugiyama/package"
     export CONDDIR="/home/anaconda3"
