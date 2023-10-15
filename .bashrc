@@ -63,9 +63,6 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     fi
 fi
 
-# Auto complete, ignoring large/small characters
-set completion-ignore-case On
-
 # Conda setup
 __conda_setup="$(${CONDDIR}/bin/conda 'shell.bash' 'hook' 2> /dev/null)"
 if [ $? -eq 0 ]; then
