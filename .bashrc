@@ -14,28 +14,28 @@ if [ "$HOSTNAME_TEMP" = "sunaomac" ]; then
     export WORKDIR="${HOME}/documents/projects"
     export PACKDIR="${HOME}/documents/packages"
     export CONDDIR="${HOME}/miniconda3"
+    PROMPT_COLOR="\e[1;33m"
     eval "$(rbenv init -)"
     export PATH="/opt/cisco/anyconnect/bin:${PATH}"
     export LDFLAGS="-L/usr/local/opt/llvm/lib"
     export CPPFLAGS="-I/usr/local/opt/llvm/include"
-    alias clamscanall="clamscan ~/ --recursiv"
-    alias cn="code -n"
 elif [ "$HOSTNAME_TEMP" = "idark" ]; then
     export WORKDIR="/lustre/work/sunao.sugiyama/"
     export PACKDIR="/lustre/work/sunao.sugiyama/package"
+    PROMPT_COLOR="\e[1;35m"
     export CONDDIR="/home/anaconda3"
     #export PATH=${HOME}/.nvim/:$PATH
 elif [ "$HOSTNAME_TEMP" = "fe"]; then
     export WORKDIR="/work/sunao.sugiyama/"
     export PACKDIR="/work/sunao.sugiyama/package"
     export CONDDIR="/home/anaconda3"
+    PROMPT_COLOR="\e[0;32m"
     #export PATH=${HOME}/.nvim/:$PATH
 else
     # Default settings
     echo "No settings for $HOSTNAME_TEMP"
 fi
-PS1="\[\e[1;33m\][$HOSTNAME_TEMP:\[\e[m\]\[\e[1;36m\]\t] \$ \[\e[m\]"
-unset HOSTNAME_TEMP
+PS1="\[$PROMPT_COLOR\][$HOSTNAME_TEMP:\[\e[m\]\[\e[1;36m\]\t] \$ \[\e[m\]"
 
 #############################################################
 # Common settings
@@ -59,14 +59,6 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     fi
 fi
 
-# PBS-related alias 
-if which qstat &>/dev/null; then
-    alias mypbsqstat="qstat"
-fi
-if which qsub &>/dev/null; then
-    alias mypbsqsub="qsub"
-fi
-
 # Conda setup
 __conda_setup="$(${CONDDIR}/bin/conda 'shell.bash' 'hook' 2> /dev/null)"
 if [ $? -eq 0 ]; then
@@ -82,8 +74,18 @@ fi
 # My own scripts
 export PATH="${HOME}/.scripts/scripts:${PATH}"
 
+#############################################################
 # Alias
-alias jl="jupyter lab"
 alias gow="cd ${WORKDIR}"
 alias gop="cd ${PACKDIR}"
 alias ls='ls -G'
+
+# Jupyter alias
+alias jl="jupyter lab"
+
+# PBS-related alias 
+command -v qstat > /dev/null 2>&1 && alias mypbsqstat="qstat"
+command -v qsub  > /dev/null 2>&1 && alias mypbsqsub="qsub"
+
+# VScode alias
+command -v code  > /dev/null 2>&1 && alias cn="code -n"
