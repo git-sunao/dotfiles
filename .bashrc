@@ -24,7 +24,7 @@ elif [ "$HOSTNAME_TEMP" = "idark" ]; then
     export PACKDIR="/lustre/work/sunao.sugiyama/package"
     export CONDDIR="/home/anaconda3"
     PROMPT_COLOR="\e[1;35m"
-elif [ "$HOSTNAME_TEMP" = "gw1.local"]; then
+elif [ "$HOSTNAME_TEMP" = "gw1.local" ]; then
     [ -f /etc/bashrc ] && . /etc/bashrc
     export WORKDIR="/work/sunao.sugiyama/"
     export PACKDIR="/work/sunao.sugiyama/package"
