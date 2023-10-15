@@ -1,100 +1,78 @@
-###############################################
-# Global setups shared among various servers
-###############################################
+#!/bin/bash
 
-# colorized ls
-export LSCOLORS=exfxcxdxbxegedabagacad
-alias ll='ls -l'
+#############################################################
+# Settings for each host
 
-# bash command history is saved, but identical ones are ignored
-#HISTIGNORE=
-#HISTCONTROL=ignorespace:ignoredups
+# Get HOSTNAME
+if [[ $OSTYPE == "darwin"* ]]; then
+    HOSTNAME_TEMP=$(scutil --get LocalHostName)
+else
+    HOSTNAME_TEMP=$(hostname)
+fi
+# Setup for each host
+if [ "$HOSTNAME_TEMP" = "sunaomac" ]; then
+    export WORKDIR="${HOME}/documents/projects"
+    export PACKDIR="${HOME}/documents/packages"
+    export CONDDIR="${HOME}/miniconda3"
+    eval "$(rbenv init -)"
+    export PATH="/opt/cisco/anyconnect/bin:${PATH}"
+    export LDFLAGS="-L/usr/local/opt/llvm/lib"
+    export CPPFLAGS="-I/usr/local/opt/llvm/include"
+    alias clamscanall="clamscan ~/ --recursiv"
+    alias cn="code -n"
+elif [ "$HOSTNAME_TEMP" = "idark"]; then
+    export WORKDIR="/lustre/work/sunao.sugiyama/"
+    export PACKDIR="/lustre/work/sunao.sugiyama/package"
+    export CONDDIR="/home/anaconda3"
+    #export PATH=${HOME}/.nvim/:$PATH
+    alias sqstat="qstat | grep sunao"
+    alias sqstatn="qstat -n | grep sunao"
+else
+    # Default settings
+    echo "No settings for $HOSTNAME_TEMP"
+fi
+PS1="\[\e[1;33m\][$HOSTNAME_TEMP:\[\e[m\]\[\e[1;36m\]\t] \$ \[\e[m\]"
+unset HOSTNAME_TEMP
 
-## Utility
+#############################################################
+# Common settings
+
+# colorized ls (for macOS)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # Set LSCOLORS for macOS
+    export LSCOLORS=exfxcxdxbxegedabagacad
+fi
+
+# Ignore duplicate commands in the history
+export HISTCONTROL=ignoreboth
+
 # activate fuzzy finder
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
 
-# auto complete, ignoring large/small characters
-[[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
+# auto complete, ignoring large/small characters (for macOS)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    if [ -r "/usr/local/etc/profile.d/bash_completion.sh" ]; then
+    . "/usr/local/etc/profile.d/bash_completion.sh"
+    fi
+fi
 
-# cntr+w up to previous slash
-#stty werase undef
-#bind '"\C-w": unix-filename-rubout'
+# Conda setup
+__conda_setup="$(${CONDDIR}/bin/conda 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "${CONDDIR}/etc/profile.d/conda.sh" ]; then
+        . "${CONDDIR}/etc/profile.d/conda.sh"
+    else
+        export PATH="${CONDDIR}/bin:$PATH"
+    fi
+fi
+
+# My own scripts
+export PATH="${HOME}/.scripts/scripts:${PATH}"
 
 # Alias
 alias jl="jupyter lab"
-
-# scripts
-export PATH="${HOME}/.scripts/scripts:${PATH}"
-
-
-
-##################################
-# Environmental dependent setups
-##################################
-
-# Macbook air
-function sunaoair (){
-  # conda initialize
-  # !! Contents within this block are managed by 'conda init' !!
-  __conda_setup="$('/Users/sugiyamasunao/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
-  if [ $? -eq 0 ]; then
-      eval "$__conda_setup"
-  else
-      if [ -f "/Users/sugiyamasunao/miniconda3/etc/profile.d/conda.sh" ]; then
-          . "/Users/sugiyamasunao/miniconda3/etc/profile.d/conda.sh"
-      else
-          export PATH="/Users/sugiyamasunao/miniconda3/bin:$PATH"
-      fi
-  fi
-  unset __conda_setup
-  # rbenv
-  eval "$(rbenv init -)"
-  # Path 
-  export PATH="/opt/cisco/anyconnect/bin:${PATH}"
-  export LDFLAGS="-L/usr/local/opt/llvm/lib"
-  export CPPFLAGS="-I/usr/local/opt/llvm/include"
-  # Alias
-  alias ls='ls -G'
-  alias gow="cd ${HOME}/Documents/projects"
-  alias clamscanall="clamscan ~/ --recursiv"
-  # Prompto
-  PS1='\[\e[1;33m\][sunao:\[\e[m\]\[\e[1;36m\]\t] \$ \[\e[m\]'
-  # pyenv
-  ## set PYENV_ROOT /usr/local/Cellar/pyenv/1.2.18/bin/pyenv $PYENV_ROOT
-  # export PYENV_ROOT=$HOME/.pyenv:$PYENV_ROOT
-  # export PATH=$PYENV_ROOT/bin:$PATH
-  # eval "$(pyenv init -)"
-}
-
-# idark server at ipmu
-function idark () {
-  # source the local bashrc for idark.
-  source .bashrc_idark
-  # Alias
-  alias gow="cd /lustre/work/sunao.sugiyama"
-  alias sqstat="qstat | grep sunao"
-  alias sqstatn="qstat -n | grep sunao"
-  # neovim
-  export PATH=${HOME}/.nvim/:$PATH
-  # Prompto
-  PS1='\[\e[1;35m\][idark:\[\e[m\]\[\e[1;36m\]\t] \$ \[\e[m\]'
-}
-
-
-# Get HOSTNAME
-if command -v scutil > /dev/null 2>&1; then
-  local_hostname=`scutil --get LocalHostName`
-else
-  local_hostname=$HOSTNAME
-fi
-
-# Setup
-case "$local_hostname" in
-  "idark"         ) idark;;
-  "gw1.local"     ) gw1;;
-  "fe"            ) gfarm;;
-  "sunaomac") sunaoair;;
-  *) echo "We do not support the server: $HOSTNAME";;
-esac
-unset local_hostname
+alias gow="cd ${WORKDIR}"
+alias gop="cd ${PACKDIR}"
+alias ls='ls -G'

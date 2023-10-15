@@ -1,4 +1,4 @@
-name: cosmo
+name: mlcosmo
 
 channels:
   - anaconda
@@ -14,11 +14,16 @@ dependencies:
   - matplotlib
   - george
   - ipykernel
-  - pymultinest
-  - multinest
+    #  - pymultinest
+    #- multinest
     # - mpmath
-    # - jax
-    # - pytorch
   - astropy
   - treecorr
   - tqdm
+  - jax
+  - flax
+  - tensorflow
+  - mpi4py
+  - openmpi
+  - pip:
+    - clu

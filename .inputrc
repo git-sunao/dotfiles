@@ -1,0 +1,5 @@
+# Ignore case during tab completion
+set completion-ignore-case On
+
+# Bind Control + W to backward-kill-path
+"\C-w": backward-kill-path
