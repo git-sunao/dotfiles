@@ -42,10 +42,11 @@ PS1="\[$PROMPT_COLOR\][$HOSTNAME_TEMP:\[\e[m\]\[\e[1;36m\]\t] \$ \[\e[m\]"
 # Neovim
 export PATH=${HOME}/.nvim/:$PATH
 
-# colorized ls (for macOS)
+# colorized ls
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    # Set LSCOLORS for macOS
     export LSCOLORS=exfxcxdxbxegedabagacad
+else
+    export LS_COLORS=exfxcxdxbxegedabagacad
 fi
 
 # Ignore duplicate commands in the history
