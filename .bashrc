@@ -48,7 +48,6 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     export LSCOLORS=exfxcxdxbxegedabagacad
 else
     export LS_COLORS="di=34:ln=36:so=32:pi=33:ex=31:bd=34;46:cd=37;44:*.mp3=35"
-    #export LS_COLORS="BD:CA:EX:FX:DI:DO:LC:LE:PI:SO:PI:DO"
 fi
 
 # Ignore duplicate commands in the history
@@ -83,7 +82,7 @@ export PATH="${HOME}/.scripts/scripts:${PATH}"
 # Alias
 alias gow="cd ${WORKDIR}"
 alias gop="cd ${PACKDIR}"
-alias ls='ls -G'
+alias ls='ls -G --color=auto'
 
 # Jupyter alias
 alias jl="jupyter lab"
