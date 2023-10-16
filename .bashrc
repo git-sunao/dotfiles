@@ -41,6 +41,11 @@ elif [ "$HOSTNAME_TEMP" = "fe" ] || [[ "$HOSTNAME_TEMP" == *ansys* ]]; then
     export PACKDIR="/gpfs02/work/sunao.sugiyama/package"
     export CONDDIR="/home/anaconda3"
     PROMPT_COLOR="\e[0;31m"
+elif [[ "$HOSTNAME" == "login*" ]]; then
+    # NERSC cluster
+    export WORKDIR=${PSCRATCH}
+    export PACKDIR=${PSCRATCH}/package
+    export CONDDIR=${PSCRATCH}/miniconda3
 else
     # Default settings
     echo "No settings for $HOSTNAME_TEMP"
