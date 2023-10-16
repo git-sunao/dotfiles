@@ -1,7 +1,6 @@
 #!/bin/bash
 
-#############################################################
-# Settings for each host
+# Setup environment variables for each host.
 
 # Get HOSTNAME
 if [[ $OSTYPE == "darwin"* ]]; then
@@ -46,65 +45,9 @@ elif [[ "$HOSTNAME" == "login*" ]]; then
     export WORKDIR=${PSCRATCH}
     export PACKDIR=${PSCRATCH}/package
     export CONDDIR=${PSCRATCH}/miniconda3
+    PROMPT_COLOR="\e[0;31m"
 else
     # Default settings
     echo "No settings for $HOSTNAME_TEMP"
 fi
 PS1="\[$PROMPT_COLOR\][$HOSTNAME_TEMP:\[\e[m\]\[\e[1;36m\]\t] \$ \[\e[m\]"
-
-#############################################################
-# Common settings
-
-# Neovim
-export PATH=${HOME}/.nvim/:$PATH
-
-# colorized ls
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    export LSCOLORS=exfxcxdxbxegedabagacad
-else
-    export LS_COLORS="di=34:ln=36:so=32:pi=33:ex=31:bd=34;46:cd=37;44:*.mp3=35"
-fi
-
-# Ignore duplicate commands in the history
-export HISTCONTROL=ignoreboth
-
-# activate fuzzy finder
-[ -f ~/.fzf.bash ] && source ~/.fzf.bash
-
-# auto complete, ignoring large/small characters (for macOS)
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    if [ -r "/usr/local/etc/profile.d/bash_completion.sh" ]; then
-        . "/usr/local/etc/profile.d/bash_completion.sh"
-    fi
-fi
-
-# Conda setup
-__conda_setup="$(${CONDDIR}/bin/conda 'shell.bash' 'hook' 2> /dev/null)"
-if [ $? -eq 0 ]; then
-    eval "$__conda_setup"
-else
-    if [ -f "${CONDDIR}/etc/profile.d/conda.sh" ]; then
-        . "${CONDDIR}/etc/profile.d/conda.sh"
-    else
-        export PATH="${CONDDIR}/bin:$PATH"
-    fi
-fi
-
-# My own scripts
-export PATH="${HOME}/.scripts/scripts:${PATH}"
-
-#############################################################
-# Alias
-alias gow="cd ${WORKDIR}"
-alias gop="cd ${PACKDIR}"
-alias ls='ls -G --color=auto'
-
-# Jupyter alias
-alias jl="jupyter lab"
-
-# PBS-related alias 
-command -v qstat > /dev/null 2>&1 && alias mypbsqstat="qstat"
-command -v qsub  > /dev/null 2>&1 && alias mypbsqsub="qsub"
-
-# VScode alias
-command -v code  > /dev/null 2>&1 && alias cn="code -n"
