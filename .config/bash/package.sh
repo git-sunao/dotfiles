@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Neovim
-export PATH="${HOME}/.nvim/:${PATH}"
-
 # My own scripts
 export PATH="${HOME}/.scripts/scripts:${PATH}"
 
