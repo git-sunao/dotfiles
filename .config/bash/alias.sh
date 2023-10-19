@@ -2,6 +2,7 @@
 # Alias
 alias gow="cd ${WORKDIR}"
 alias gop="cd ${PACKDIR}"
+alias ll="ls -l"
 alias ls='ls -G --color=auto'
 
 # Jupyter alias
