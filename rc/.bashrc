@@ -1,8 +1,9 @@
 #!/bin/bash
 
+config_files=("$HOME/.config/bash/"*.sh)
 # load the path files
-for file in envs.sh package.sh typing.sh alias.sh editor.sh;
+for file in "${config_files[@]}"
 do
-  source $HOME/.config/bash/$file
+  source $file
 done
 unset config_files

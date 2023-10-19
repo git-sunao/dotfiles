@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# supress zsh warning
+export BASH_SILENCE_DEPRECATION_WARNING=1
+
 # colorized ls
 if [[ "$OSTYPE" == "darwin"* ]]; then
     export LSCOLORS=exfxcxdxbxegedabagacad
