@@ -1,5 +1,8 @@
 name: cosmo
 
+info:
+  description: Basic cosmology environment
+
 channels:
   - anaconda
   - conda-forge
@@ -22,3 +25,5 @@ dependencies:
   - astropy
   - treecorr
   - tqdm
+  - pip
+    - getdist

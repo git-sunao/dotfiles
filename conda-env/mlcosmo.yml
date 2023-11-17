@@ -1,5 +1,9 @@
 name: mlcosmo
 
+info:
+  description: Cosmology with Machine Learning environment
+  projects: CosmoLiME
+
 channels:
   - anaconda
   - conda-forge
@@ -23,6 +27,7 @@ dependencies:
   - jax
   - flax
   - tensorflow
+  - tensorflow-probability
   - mpi4py
   - openmpi
   - pip:
