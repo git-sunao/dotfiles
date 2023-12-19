@@ -19,3 +19,6 @@ if [ -n "$CONDDIR" ]; then
         fi
     fi
 fi
+
+# rbenv
+eval "$(rbenv init -)"
