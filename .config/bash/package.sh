@@ -24,4 +24,4 @@ if [ -n "$CONDDIR" ]; then
 fi
 
 # rbenv
-eval "$(rbenv init -)"
+command -v rbenv > /dev/null 2>&1 && eval "$(rbenv init -)"
