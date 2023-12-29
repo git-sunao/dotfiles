@@ -1,0 +1,19 @@
+name: sage
+
+info:
+  description: Environment for sage
+
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+
+dependencies:
+  - jupyterlab
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - ipykernel
+  - mamba
+  - sage

@@ -1,0 +1,20 @@
+name: dev
+
+info:
+  description: Base environment for code development
+
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+
+dependencies:
+  - jupyterlab
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - ipykernel
+  - mamba
+  - conda-build
+

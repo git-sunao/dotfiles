@@ -1,0 +1,20 @@
+name: image
+
+info:
+  description: Environment for image analysis
+
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+
+dependencies:
+  - jupyterlab
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - ipykernel
+  - mamba
+  - opencv
+
