@@ -1,0 +1,11 @@
+name: cosmosis
+
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+
+dependencies:
+  - cosmosis
+  - cosmosis-build-standard-library
+  - george
