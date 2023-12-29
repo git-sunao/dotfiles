@@ -1,2 +1,4 @@
 
+scripts/cisco2ipmu
+scripts/sshproxy.sh
 .config/nvim/plugin/

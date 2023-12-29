@@ -1,7 +1,10 @@
 #!/bin/bash
 
+# get path to here
+here=$(dirname "$(readlink -f ${BASH_SOURCE[0]})")
+
 # My own scripts
-export PATH="${HOME}/.scripts/scripts:${PATH}"
+export PATH="${here}/../../scripts:${PATH}"
 
 # activate fuzzy finder
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash

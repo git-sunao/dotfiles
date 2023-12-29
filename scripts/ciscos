@@ -1,0 +1,5 @@
+#!/bin/bash
+# See cisco stats
+
+#vpn -s stats | grep State | grep -v Management
+vpn -s stats | grep "notice: Connected"

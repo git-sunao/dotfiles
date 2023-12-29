@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# Usage: cat main.tex | extract-authors.sh
+
+# Regular expression to match \author{...} with optional \orcidlink{...}
+pattern="\\author{([^}]*)(\\orcidlink{[^}]*})?}"
+
+# Counter for the number of authors
+author_count=0
+
+# Read input from stdin
+while IFS= read -r line; do
+    # Check if the line contains \author{...}
+    if [[ $line =~ $pattern ]]; then
+        # Extract the author name and remove \orcidlink{...}
+        author_name="${BASH_REMATCH[1]}"
+        cleaned_author_name=$(echo "$author_name" | sed 's/\\orcidlink{[^}]*}//g')
+        
+        # Print the cleaned author name
+        echo "$cleaned_author_name"
+
+        # Increment the author count
+        ((author_count++))
+    fi
+done
+
+# Display the total number of authors
+echo "Total authors: $author_count"

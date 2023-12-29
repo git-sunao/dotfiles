@@ -1,0 +1,17 @@
+#!/usr/bin/expect
+# Conenct to the specified server with vpn by Cisco
+
+# read username and password
+set server   [lindex $argv 0];
+set username [lindex $argv 1];
+set password [lindex $argv 2];
+
+spawn vpn -s connect $server
+
+expect "Group: \\\[Remote_User\\\]" {send "\r" }
+expect "Username: " { send "$username\r" }
+expect "Password: " { send "$password\r" }
+expect "accept? \\\[y/n\\\]:" { send "y\r" }
+
+set timeout 60
+expect "VPN>"

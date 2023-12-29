@@ -1,0 +1,169 @@
+#!/usr/bin/env python
+"""
+Author: Sunao Sugiyama
+"""
+
+import argparse
+import re
+import os
+import shutil
+
+scriptname = os.path.basename(__file__)
+
+def read(filename):
+    with open(filename, 'r') as f:
+        lines = f.readlines()
+    return lines
+
+
+def write(filename, lines):
+    with open(filename, 'w') as f:
+        for line in lines:
+            f.write(line)
+
+
+def remove_comments(mainfile):
+    lines = []
+    for line in mainfile:
+        # skip fully commented line
+        match = re.match(r'^\s*%.*', line)
+        if match:
+            continue
+
+        # remove comments
+        linenc = re.sub(r'(?<!\\)%.*$', '', line, flags=re.MULTILINE)
+
+        lines.append(linenc)
+
+    return lines
+
+
+def replace_inputs(mainfile):
+    lines = []
+    for line in mainfile:
+        # replace \input{...} with the contents
+        match = re.search(r'\\input{(.+)}', line)
+        if match:
+
+            input_filename = match.group(1)
+            with open(input_filename, 'r') as input_file:
+                sublines = [f'% LOG by {scriptname}: Replaced input with its content =  {line}'] + input_file.readlines()
+        else:
+            sublines = [line]
+
+        lines.extend(sublines)
+
+    return lines
+
+
+def extract_figure_paths(mainfile):
+    filepaths = []
+    for line in mainfile:
+        match = re.search(r'\\includegraphics.*{(.+)}', line)
+        if match:
+            filepath = match.group(1)
+            filepaths.append(filepath)
+    return filepaths
+
+
+def replace_figure_paths(mainfile):
+    lines = []
+    for line in mainfile:
+        match = re.search(r'\\includegraphics.*{(.+)}', line)
+        if match:
+            filepath = match.group(1)
+            lines.append(line.replace(filepath, os.path.basename(filepath)))
+        else:
+            lines.append(line)
+    return lines
+
+
+def extract_bib_paths(mainfile):
+    bib_file_name = ''
+    for line in mainfile:
+        match = re.search(r'\\bibliography{(.+)}', line)
+        if match:
+            bib_file_name = match.group(1)
+    return bib_file_name.split(',')
+
+
+def pack(outdir_in, mainfile, figpaths, bibpaths, overwrite=False):
+    version = 1
+    outdir = outdir_in
+    if not overwrite:
+        while os.path.exists(outdir):
+            version += 1
+            outdir = outdir_in + f'-{version}'
+    print(f'Packing source files to {outdir}')
+
+    #  make dir
+    os.mkdir(outdir)
+
+    # save source file
+    write(os.path.join(outdir, 'main.tex'), mainfile)
+
+    # save figures
+    for figpath in figpaths:
+        shutil.copy(figpath, os.path.join(outdir, os.path.basename(figpath)))
+
+    # save bib
+    for bibpath in bibpaths:
+        shutil.copy(bibpath+'.bib', os.path.join(outdir, os.path.basename(bibpath)+'.bib'))
+
+    return outdir
+
+
+def compile(outdir, source_filename):
+    os.chdir(outdir)
+    os.system(f'pwd')
+    os.system(f'latexmk -pdfdvi {source_filename}')
+    os.system(f'latexmk -c')
+    os.chdir('../')
+
+
+def targz(outdir):
+    import tarfile
+    with tarfile.open(f'{outdir}.tar.gz', 'w:gz') as tar:
+        tar.add(outdir)
+
+
+def main():
+    parser = argparse.ArgumentParser(description='make directory for submission')
+    parser.add_argument('outdir', help='name of output directory', default='arXiv')
+    parser.add_argument('--source', help='source tex file', default='main.tex')
+    parser.add_argument('--tar', action='store_true', help='')
+    parser.add_argument('--compile', action='store_true')
+    args = parser.parse_args()
+
+    # Read main tex source file
+    mainfile = read(args.source)
+
+    # remove comments
+    mainfile = remove_comments(mainfile)
+
+    # replace inputs
+    mainfile = replace_inputs(mainfile)
+
+    # extract figures
+    figpaths = extract_figure_paths(mainfile)
+
+    # extract bib paths
+    bibpaths = extract_bib_paths(mainfile)
+    
+    # replace figure paths
+    mainfile = replace_figure_paths(mainfile)
+
+    # pack
+    outdir   = pack(args.outdir, mainfile, figpaths, bibpaths)
+
+    # compile
+    if args.compile:
+        compile(outdir, os.path.basename(args.source))
+
+    # tar zip
+    if args.tar:
+        targz(outdir)
+
+
+if __name__ == '__main__':
+    main()

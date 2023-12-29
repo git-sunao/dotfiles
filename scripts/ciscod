@@ -1,0 +1,4 @@
+#!/bin/bash
+# disconnect/close vpn connection
+
+vpn -s disconnect

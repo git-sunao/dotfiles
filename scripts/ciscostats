@@ -1,0 +1,4 @@
+#!/bin/bash
+# See cisco stats
+
+vpn -s stats
