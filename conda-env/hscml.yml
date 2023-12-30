@@ -1,0 +1,31 @@
+name: hscml
+
+info:
+  description: HSC M31 microlensing project env
+
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+  - ssunao
+
+dependencies:
+  - jupyterlab
+  - numpy
+  - scipy
+  - fastlens
+  - pandas
+  - matplotlib
+  - george
+  - ipykernel
+  - pymultinest
+  - multinest
+  - mpmath
+  - jax
+  - astropy
+  - tqdm
+  - openmp
+  - mpi4py
+  - pip:
+    - getdist
+    - vegas
