@@ -1,9 +1,7 @@
-name: hscml
-description: HSC Microlensing env, compatible with HSCPipe8
+name: lsst-scipipe-4d7b902
 channels:
   - defaults
   - conda-forge
-  - ssunao
 dependencies:
   - _libgcc_mutex=0.1=main
   - apipkg=1.5=py37_0
@@ -173,9 +171,3 @@ dependencies:
   - zstd=1.3.7=h0b5b093_0
   - pip:
     - deprecated==1.2.5
-    - getdist
-  - fastlens
-  - mamba
-  - multinest
-  - pymultinest
-  - tqdm

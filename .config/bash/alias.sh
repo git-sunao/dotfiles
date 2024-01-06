@@ -9,8 +9,9 @@ alias ls='ls -G --color=auto'
 alias jl="jupyter lab"
 
 # PBS-related alias 
-command -v qstat > /dev/null 2>&1 && alias mypbsqstat="qstat"
-command -v qsub  > /dev/null 2>&1 && alias mypbsqsub="qsub"
+command -v qstat > /dev/null 2>&1 && alias sqstat="qstat | grep sunao"
+command -v qstat > /dev/null 2>&1 && alias qstatn="qstat -n"
+command -v qstat > /dev/null 2>&1 && alias sqstatn="qstat -n | grep sunao"
 
 # VScode alias
 command -v code  > /dev/null 2>&1 && alias cn="code -n"
