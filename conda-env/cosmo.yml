@@ -6,27 +6,25 @@ info:
 channels:
   - anaconda
   - conda-forge
-    # - pytorch
   - defaults
+  - nishimichi
 
 dependencies:
   - jupyterlab
+  - dark_emulator
   - numpy
   - scipy
   - pandas
   - matplotlib
   - george
   - ipykernel
-  - pymultinest
-  - multinest
-    # - mpmath
-    # - jax
-    # - pytorch
+  # - pymultinest
+  # - multinest
   - astropy
   - treecorr
   - tqdm
   - openmp
   - mpi4py
-  - pip
-    - getdist
-    - vegas
+  # - pip
+  # - pip:
+  #   - getdist

@@ -21,3 +21,4 @@ dependencies:
   - twine
   - grayskull
   - anaconda-client
+  - sphinx

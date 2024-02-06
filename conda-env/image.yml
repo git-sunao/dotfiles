@@ -17,4 +17,4 @@ dependencies:
   - ipykernel
   - mamba
   - opencv
-
+  - pillow

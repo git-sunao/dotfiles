@@ -2,6 +2,7 @@ name: sage
 
 info:
   description: Environment for sage
+  note: gsl is optional
 
 channels:
   - anaconda
@@ -17,3 +18,4 @@ dependencies:
   - ipykernel
   - mamba
   - sage
+  - gsl

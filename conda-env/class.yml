@@ -1,0 +1,14 @@
+name: classy
+
+info:
+  description: env needed to compile class (classy)
+
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+
+dependencies:
+  - numpy
+  - ipykernel
+  - cython

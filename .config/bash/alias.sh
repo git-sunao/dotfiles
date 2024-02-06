@@ -15,3 +15,9 @@ command -v qstat > /dev/null 2>&1 && alias sqstatn="qstat -n | grep sunao"
 
 # VScode alias
 command -v code  > /dev/null 2>&1 && alias cn="code -n"
+
+# ssh alias for alacritty
+if [ "$TERM" == "alacritty" ]; then
+  alias ssh='TERM=xterm-256color ssh'
+fi
+
