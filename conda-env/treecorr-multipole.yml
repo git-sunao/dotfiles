@@ -1,0 +1,20 @@
+name: tcmltp
+
+info:
+  description: Basic cosmology environment
+
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+
+dependencies:
+  - jupyterlab
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - ipykernel
+  - astropy
+  - openmp
+  - mpi4py
