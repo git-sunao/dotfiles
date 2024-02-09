@@ -25,6 +25,7 @@ dependencies:
   - tqdm
   - openmp
   - mpi4py
+  - healpy
   # - pip
   # - pip:
   #   - getdist

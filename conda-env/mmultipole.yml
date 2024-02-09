@@ -1,7 +1,7 @@
-name: tcmltp
+name: mmultipole
 
 info:
-  description: Basic cosmology environment
+  description: measurement of 3pcf multipole
 
 channels:
   - anaconda
@@ -18,3 +18,4 @@ dependencies:
   - astropy
   - openmp
   - mpi4py
+  - healpy
