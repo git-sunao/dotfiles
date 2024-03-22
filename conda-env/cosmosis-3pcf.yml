@@ -1,0 +1,24 @@
+name: csis3pcf
+channels:
+- anaconda
+- conda-forge
+- defaults
+- nishimichi
+dependencies:
+- astropy
+- cosmosis
+- cosmosis-build-standard-library
+- cython
+- dark_emulator
+- george
+- ipykernel
+- matplotlib
+- mpi4py
+- numpy
+  #- openmp
+- pandas
+- scipy
+- tqdm
+- healpy
+- pip:
+  - baccoemu

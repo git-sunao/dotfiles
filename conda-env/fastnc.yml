@@ -22,3 +22,5 @@ dependencies:
   - dark_emulator
   - george
   - cython
+  # dev
+  - mpi4py
