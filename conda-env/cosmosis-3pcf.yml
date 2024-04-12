@@ -20,5 +20,7 @@ dependencies:
 - scipy
 - tqdm
 - healpy
+- treecorr
 - pip:
   - baccoemu
+  - getdist
