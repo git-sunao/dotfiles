@@ -20,5 +20,9 @@ dependencies:
 - scipy
 - tqdm
 - healpy
+- getdist
 - pip:
   - baccoemu
+  - tensorflow
+  - cosmopower
+
