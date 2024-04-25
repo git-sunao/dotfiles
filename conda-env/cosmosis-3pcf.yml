@@ -21,8 +21,9 @@ dependencies:
 - tqdm
 - healpy
 - getdist
+- getdist
+- treecorr
 - pip:
   - baccoemu
   - tensorflow
   - cosmopower
-
