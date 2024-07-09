@@ -19,3 +19,4 @@ dependencies:
   - openmp
   - mpi4py
   - healpy
+  - fitsio
