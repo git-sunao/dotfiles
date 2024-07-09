@@ -20,5 +20,10 @@ dependencies:
 - scipy
 - tqdm
 - healpy
+- getdist
+- getdist
+- treecorr
 - pip:
   - baccoemu
+  - tensorflow
+  - cosmopower
