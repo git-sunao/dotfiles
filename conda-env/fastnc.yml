@@ -24,3 +24,7 @@ dependencies:
   - cython
   # dev
   - mpi4py
+  - treecorr
+  - pip:
+    - classy
+

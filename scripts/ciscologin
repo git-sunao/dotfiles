@@ -6,9 +6,11 @@ set server   [lindex $argv 0];
 set username [lindex $argv 1];
 set password [lindex $argv 2];
 
+set timeout 1
 spawn vpn -s connect $server
 
-expect "Group: \\\[Remote_User\\\]" {send "\r" }
+# expect ">> notice: Contacting IPMU." { send "\r" }
+expect "Group: \\\[Remote_User\\\]" { send "0\r" }
 expect "Username: " { send "$username\r" }
 expect "Password: " { send "$password\r" }
 expect "accept? \\\[y/n\\\]:" { send "y\r" }

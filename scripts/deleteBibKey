@@ -35,7 +35,7 @@ def main(filename, keys, overwrie=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("file", type=str, help="bib file name")
-    parser.add_argument("-k","--keys", help="keys to delete", type=list, default=['abstract', 'local-url'])
+    parser.add_argument("-k","--keys", help="keys to delete", type=list, default=['abstract', 'local-url', 'language'])
     parser.add_argument("-o","--overwrite", help="overwrite the original file", action="store_true")
     opts = parser.parse_args()
 

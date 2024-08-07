@@ -32,15 +32,15 @@ def loadDB(bibfile, max_authors):
 
 def main(args=None):
     parser = ArgumentParser(usage="Usage: %(prog)s [options]", description="shortens authorlist by replacing excess authors with 'others'")
+    parser.add_argument("file", help="name of input bib file")
     parser.add_argument("-n","--nauthors",type=int, help="max number of authors", dest='max_authors', default=5)
-    parser.add_argument("-o","--output",dest='output', help="name of output file, default will take input file and change to <file>-short.bib", default=None)
-    parser.add_argument("-i","--input",dest='input', help="name of input bib file", required=True)
+    parser.add_argument("-o","--overwrite", help="name of output file, default will take input file and change to <file>-short.bib", action='store_true')
     opts = parser.parse_args(args)
-    if opts.output is None:
-        out = opts.input.replace(".bib","-short.bib")
+    if opts.overwrite:
+        out = opts.file
     else:
-        out = opts.output
-    db = loadDB(opts.input, opts.max_authors)
+        out = opts.file.replace('.bib','-short.bib')
+    db = loadDB(opts.file, opts.max_authors)
     writer = BibTexWriter()
     with open(out, 'w') as bibfile:
         #bibfile.write(bib_dumps(db, writer).encode("utf-8"))
