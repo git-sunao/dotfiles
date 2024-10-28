@@ -28,3 +28,4 @@ dependencies:
   - tensorflow
   - cosmopower
   - tf_keras
+  - memory-profiler
