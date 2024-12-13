@@ -1,0 +1,30 @@
+name: csis3pcf-tf216
+channels:
+- anaconda
+- conda-forge
+- defaults
+- ssunao
+dependencies:
+- astropy
+- cosmosis==3.5.1
+- cosmosis-build-standard-library
+- cython
+- ipykernel
+- matplotlib
+- mpi4py
+- numpy
+- openmp
+- pandas
+- scipy
+- tqdm
+- healpy
+- getdist
+- treecorr
+- pymultinest
+- fastnc
+- pip:
+  - cosmopower
+  - tensorflow>=2.16
+  - baccoemu
+  - tf_keras
+  - memory-profiler
