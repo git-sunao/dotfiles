@@ -1,0 +1,31 @@
+name: csis3pcf-omp
+channels:
+- anaconda
+- conda-forge
+- defaults
+- nishimichi
+dependencies:
+- astropy
+- cosmosis==3.5.1
+- cosmosis-build-standard-library
+- cython
+- dark_emulator
+- george
+- ipykernel
+- matplotlib
+- mpi4py
+- numpy
+- openmp
+- pandas
+- scipy
+- tqdm
+- healpy
+- getdist
+- treecorr
+- pymultinest
+- pip:
+  - baccoemu
+  - tensorflow
+  - cosmopower
+  - tf_keras
+  - memory-profiler
