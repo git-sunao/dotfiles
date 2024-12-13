@@ -1,4 +1,4 @@
-name: csis3pcf-tf216
+name: cstf216
 channels:
 - anaconda
 - conda-forge

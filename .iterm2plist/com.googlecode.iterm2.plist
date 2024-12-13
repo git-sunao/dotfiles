@@ -1394,7 +1394,7 @@
 			<key>Non-ASCII Anti Aliased</key>
 			<true/>
 			<key>Normal Font</key>
-			<string>HackNFM-Regular 13</string>
+			<string>HackNFM-Regular 16</string>
 			<key>Option Key Sends</key>
 			<integer>2</integer>
 			<key>Prompt Before Closing 2</key>
@@ -3746,6 +3746,8 @@
 	</dict>
 	<key>Print In Black And White</key>
 	<true/>
+	<key>ShowFullScreenTabBar</key>
+	<false/>
 	<key>SoundForEsc</key>
 	<false/>
 	<key>StatusBarPosition</key>
@@ -3757,6 +3759,8 @@
 	<key>ToolbeltTools</key>
 	<array>
 		<string>Profiles</string>
+		<string>Snippets</string>
+		<string>Command History</string>
 	</array>
 	<key>UseBorder</key>
 	<false/>
