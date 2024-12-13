@@ -21,6 +21,8 @@ dependencies:
 - treecorr
 - pymultinest
 - fastnc
+- pyDOE
+  # - jupyterlab
 - pip:
   - cosmopower
   - tensorflow>=2.16
