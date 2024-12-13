@@ -1,0 +1,22 @@
+name: hos
+channels:
+- anaconda
+- conda-forge
+- defaults
+dependencies:
+- python==3.7
+- astropy
+- cython
+- ipykernel
+- matplotlib
+- mpi4py
+- numpy
+- pandas
+- scipy
+- tqdm
+- healpy
+# - getdist
+- pip:
+  - tensorflow==1.15
+  - emcee
+    # - git+https://github.com/justinalsing/pydelfi.git
