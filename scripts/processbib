@@ -1,0 +1,20 @@
+#!/usr/bin/env python
+import os, sys
+sys.path.append(os.path.dirname(__file__))
+from argparse import ArgumentParser
+from solvebib      import main as main_solve
+from deleteBibKey  import main as main_delete
+from shortenAuthor import main as main_shorten_author
+
+if __name__ == '__main__':
+    parser = ArgumentParser(usage="Usage: %(prog)s [options]", description="short cut for doing solvebib, deletebib, and shortenAuthor")
+    parser.add_argument("file", help="name of input bib file")
+    parser.add_argument("-n","--nauthors",type=int, help="max number of authors", dest='max_authors', default=5)
+    parser.add_argument("-o","--overwrite", help="name of output file, default will take input file and change to <file>-short.bib", action='store_true')
+    parser.add_argument("-k","--keys", help="keys to delete", type=list, default=['abstract', 'local-url', 'language'])
+    args = parser.parse_args()
+
+    # 
+    main_solve(args.file, args.overwrite)
+    main_shorten_author(args.file, args.overwrite, args.max_authors)
+    main_delete(args.file, args.keys, args.overwrite)

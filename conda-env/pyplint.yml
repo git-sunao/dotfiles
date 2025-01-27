@@ -1,0 +1,33 @@
+name: pyplint
+
+info:
+  description: Picard_Lefschetz integral environment
+
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+
+dependencies:
+  - jupyterlab
+  - numpy
+  - scipy
+  - matplotlib
+  - ipykernel
+  - mamba
+  - boa
+  - conda-build
+  - twine
+  - grayskull
+  - anaconda-client
+  - sphinx
+  - ipykernel
+  - pip
+  - pytorch
+  - seaborn
+  - pip:
+    - pyro-ppl
+    - numpyro
+    - flax
+    - optax
+    - distrax
