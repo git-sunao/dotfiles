@@ -8,6 +8,7 @@ alias ls='ls -G --color=auto'
 # Jupyter alias
 alias jl="jupyter lab"
 alias jlp="jupyter lab --ip=localhost --no-browser --port"
+alias gitslf="git status --porcelain | grep ^[AM] | sed -e "s,^\S ,,g" | xargs -r ls -hsS"
 
 # PBS-related alias 
 command -v qstat > /dev/null 2>&1 && alias sqstat="qstat | grep sunao"
