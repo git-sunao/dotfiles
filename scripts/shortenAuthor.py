@@ -47,5 +47,5 @@ if __name__ == '__main__':
     parser.add_argument("file", help="name of input bib file")
     parser.add_argument("-n","--nauthors",type=int, help="max number of authors", dest='max_authors', default=5)
     parser.add_argument("-o","--overwrite", help="name of output file, default will take input file and change to <file>-short.bib", action='store_true')
-    opts = parser.parse_args(args)
+    args = parser.parse_args()
     main(args.file, args.overwrite, args.max_authors)
