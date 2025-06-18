@@ -9,3 +9,8 @@ If you want to add the environment to the ipykernels on jupyter, you can run
 python -m ipykernel install --user --name=mm
 ```
 Note that you need to install `ipykernel` package on the environment and activate the environment prior to run this command
+
+If you have a setup script for environment variables etc for a particular conda environment, make directory for that and place them to the directory. After that run 
+```bash
+. place_scripts.sh [your-script-directory]
+```
