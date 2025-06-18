@@ -23,3 +23,6 @@ if [ "$TERM" == "alacritty" ]; then
   alias ssh='TERM=xterm-256color ssh'
 fi
 
+# Local work directory alias
+alias gol="cd ${LOCAL_WORKDIR}"
+alias gob="cd ${LOCAL_BIGDATA}"

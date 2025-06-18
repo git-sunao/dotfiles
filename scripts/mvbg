@@ -1,0 +1,18 @@
+#!/usr/bin/env python
+import os
+import sys
+
+fname = sys.argv[1]
+
+fname_base = os.path.basename(fname)
+bigdata_dir = '${LOCAL_BIGDATA}/'
+fname_dest = os.path.join(bigdata_dir, fname_base)
+
+if os.path.exists(fname_dest):
+    print(f'The file exists: {fname_dest}')
+else:
+    command = f'mv {fname} {fname_dest}'
+    print(f'Executing: {command}')
+    os.system(command)
+    # command = f'ln -s'
+    # os.system('')
