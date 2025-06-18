@@ -10,7 +10,7 @@ python -m ipykernel install --user --name=mm
 ```
 Note that you need to install `ipykernel` package on the environment and activate the environment prior to run this command
 
-If you have a setup script for environment variables etc for a particular conda environment, make directory for that and place them to the directory. After that run 
+If you have a setup script for environment variables etc for a particular conda environment, make directory for that and place them to the directory. After that, activate the conda environment and run 
 ```bash
 . place_scripts.sh [your-script-directory]
 ```
