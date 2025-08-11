@@ -6,3 +6,5 @@ channels:
 dependencies:
 - python==3.6
 - ipykernel
+- openmpi
+- mpi4py
