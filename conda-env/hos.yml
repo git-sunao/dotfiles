@@ -1,16 +1,15 @@
 name: hos
 channels:
-- anaconda
-- conda-forge
-- defaults
+  - anaconda
+  - conda-forge
+  - defaults
 dependencies:
-- python==3.6
-  #- ipykernel
-  #- matplotlib
-- numpy==1.19.5
-  #- tqdm
-  #- getdist
-- pip:
-  - tensorflow==1.15
-    #- emcee
-    # - git+https://github.com/justinalsing/pydelfi.git
+  - python
+  - matplotlib
+  - numpy
+  - scipy
+  - tqdm
+  - getdist
+  - pip:
+    - sbi
+    - emcee
