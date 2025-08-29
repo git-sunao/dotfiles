@@ -31,3 +31,5 @@ dependencies:
     - flax
     - optax
     - distrax
+    - scikit-learn
+    - getdist
