@@ -1,0 +1,21 @@
+name: binary
+
+info:
+  description: env for binary lens
+
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+
+dependencies:
+  - jupyterlab
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - ipykernel
+  - mamba
+  - boa
+  - conda-build
+  - twine

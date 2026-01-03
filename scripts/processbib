@@ -16,5 +16,5 @@ if __name__ == '__main__':
 
     # 
     main_solve(args.file, args.overwrite)
-    main_shorten_author(args.file, args.overwrite, args.max_authors)
-    main_delete(args.file, args.keys, args.overwrite)
+    # main_shorten_author(args.file, args.overwrite, args.max_authors)
+    # main_delete(args.file, args.keys, args.overwrite)
