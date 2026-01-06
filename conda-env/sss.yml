@@ -1,0 +1,18 @@
+name: sss
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python
+  - numpy
+  - matplotlib
+  - pytorch
+  - astropy
+  - mpi4py
+  - pandas
+  - scipy
+  - tqdm
+  - healpy
+  - getdist
+  - ipykernel
+  - jax
