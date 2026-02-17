@@ -1,0 +1,24 @@
+name: julia
+
+info:
+  description: julia env
+
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+
+dependencies:
+  - julia
+  - jupyterlab
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - ipykernel
+  - boa
+  - conda-build
+  - twine
+  - grayskull
+  - anaconda-client
+  - sphinx

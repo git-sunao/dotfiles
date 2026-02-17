@@ -28,7 +28,33 @@ def problem2(bib_database):
     return bib_database
 
 def problem3(bib_database):
-    replace_with = {'é':'e', 'ollaboration)': 'ollaboration', 'ü':'u', 'ä':'a', 'ü':'u'}
+    replace_with = replace_with = {
+        'ő': 'o',
+        'Ő': 'O',
+        'ò': 'o',
+        'ó': 'o',
+        'á': 'a',
+        'ä': 'a',
+        'Á': 'A',
+        'é': 'e',
+        'É': 'E',
+        'í': 'i',
+        'Í': 'I',
+        'ó': 'o',
+        'Ó': 'O',
+        'ú': 'u',
+        'Ú': 'U',
+        'ü': 'u',
+        'Ü': 'U',
+        'ö': 'o',
+        'Ö': 'O',
+        'ć': 'c',
+        'Ć': 'C',
+        'Ž': 'Z',
+        'ž': 'z',
+        'ollaboration)': 'ollaboration'
+    }
+
     N = 0
     for key in bib_database.entries_dict.keys():
         key_now = key
@@ -45,7 +71,10 @@ def problem4(bib_database):
     replace_with = {
         'ő': '{\\H{o}}',
         'Ő': '{\\H{O}}',
+        'ò': '{\\`o}',
+        'ó': '{\\\'o}',
         'á': '{\\\'a}',
+        'ä': '{\\"a}',
         'Á': '{\\\'A}',
         'é': '{\\\'e}',
         'É': '{\\\'E}',
@@ -58,7 +87,11 @@ def problem4(bib_database):
         'ü': '{\\"u}',
         'Ü': '{\\"U}',
         'ö': '{\\"o}',
-        'Ö': '{\\"O}'
+        'Ö': '{\\"O}',
+        'ć': '{\\\'c}',
+        'Ć': '{\\\'C}',
+        'Ž': '{\\v{Z}}',
+        'ž': '{\\v{z}}'
     }
     for name in bib_database.entries_dict.keys():
         text = bib_database.entries_dict[name]['author']
@@ -66,6 +99,23 @@ def problem4(bib_database):
             text = text.replace(v, v2)
         bib_database.entries_dict[name]['author'] = text
     print('Solved problem 4')
+    return bib_database
+
+def problem5(bib_database):
+    name = 'Philcox.Ivanov.2021'
+    title = bib_database.entries_dict[name]['title']
+    bib_database.entries_dict[name]['title'] = title.replace(r'\$\textbackslashLambda\$', r'$\Lambda$')
+
+    name = 'Gebauer.Anbajagane.2025'
+    title = bib_database.entries_dict[name]['title']
+    bib_database.entries_dict[name]['title'] = title.replace(r'\$\textbackslashtexttt\{SBi3PCF:\}\$', r"{\texttt{SBi3PCF}:}")
+
+    name = 'Blaineau.Tisserand.2022'
+    title = bib_database.entries_dict[name]['title']
+    bib_database.entries_dict[name]['title'] = title.replace(r'\$10M\_\{\textbackslashodot\}<M<1000M\_\{\textbackslashodot\}\$', r"\(10M_{\odot}<M<1000M_{\odot}\)")
+
+
+    print('Solved problem 5')
     return bib_database
 
 def wrap(bib_database, solver):
@@ -83,6 +133,18 @@ def remove_title(bib_database, keys):
             if key in entry:
                 del entry[key]
 
+# fix collaboration entry
+def problem6(bib_database):
+    replace_with = {'Collaboration, DES': '{DES Collaboration}'}
+    for name in bib_database.entries_dict.keys():
+        text = bib_database.entries_dict[name]['author']
+        for v, v2 in replace_with.items():
+            text = text.replace(v, v2)
+        bib_database.entries_dict[name]['author'] = text
+    print('Solved problem 6')
+    return bib_database
+
+
 def main(filename, overwrie=False):
     # Load the .bib file
     with open(filename, 'r', encoding='utf-8') as bibfile:
@@ -93,6 +155,8 @@ def main(filename, overwrie=False):
     bib_database = wrap(bib_database, problem2)
     bib_database = wrap(bib_database, problem3)
     bib_database = wrap(bib_database, problem4)
+    bib_database = wrap(bib_database, problem5)
+    bib_database = wrap(bib_database, problem6)
 
     # Save the modified .bib file
     filename_out = filename if overwrie else filename.replace('.bib', '-solve.bib')

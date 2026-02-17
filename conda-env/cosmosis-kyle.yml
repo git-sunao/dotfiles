@@ -1,0 +1,21 @@
+name: kyle
+channels:
+- anaconda
+- conda-forge
+- defaults
+dependencies:
+- astropy
+- cosmosis
+- cosmosis-build-standard-library
+- cython
+- ipykernel
+- matplotlib
+- mpi4py
+- numpy
+- pandas
+- scipy
+- tqdm
+- healpy
+- getdist
+- pip:
+  - baccoemu
