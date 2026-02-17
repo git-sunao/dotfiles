@@ -1,0 +1,21 @@
+name: hscfy-darkemu
+channels:
+- anaconda
+- conda-forge
+- defaults
+- ssunao
+dependencies:
+- astropy
+- matplotlib
+- mpi4py
+- numpy
+- pandas
+- scipy
+- tqdm
+- healpy
+- multinest
+- pymultinest
+  # - jupyterlab
+- pip:
+  - memory-profiler
+  - colossus

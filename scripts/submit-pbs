@@ -1,0 +1,171 @@
+#!/usr/bin/env python
+"""
+Author: Sunao Sugiyama\n
+
+examples:
+    submit-pbs "mpirun -n 10 python script.py" "python postprocess.py" --config="conda activate env; . setup.sh" --queue=mini --jobname=test --no-mpirun
+"""
+
+import argparse
+import re
+import os
+
+template="""#!/bin/bash
+#PBS -q {}
+#PBS -l nodes={}:ppn={}
+#PBS -m n
+#PBS -V
+#PBS -N {}
+#PBS -o {}.o
+#PBS -e {}.e
+{}
+export VAR=value
+
+# come cwd
+cd {}
+
+# time log
+pwd > {}.t
+echo start >> {}.t
+date >> {}.t
+
+# env setup 
+{}
+# configure path/setup
+{}
+# command
+{}
+
+# time log
+echo done >> {}.t
+date >> {}.t
+"""
+
+conda_init="""CONDA_BASE=$(conda info --base) ;
+source $CONDA_BASE/etc/profile.d/conda.sh"""
+
+def max_resource_info(queue):
+    cluster = os.environ['HOSTNAME']
+    if cluster == 'idark':
+        # idark @ IPMU
+        nodes_ppn = {'tiny':[1,1,1], 
+                     'mini':[1,52,52], 
+                     'mini_B':[1,52,52], 
+                     'small':[4,52,208], 
+                     'large':[20,52,1040]}
+        walltime = ''
+    elif cluster == 'gw1.local':
+        # gw @ IPMU
+        nodes_ppn = {'tiny' :[ 1,  1,    1], 
+                     'mini' :[ 1, 28,   28], 
+                     'mini2':[ 4, 28,  112], 
+                     'small':[18, 28,  504],
+                     'large':[36, 28, 1000]}
+        walltime = '#PBS -l walltime=7:00:00:00'
+    elif cluster == 'fe':
+        # gfarm @ IPMU
+        nodes_ppn = {'tiny':[1,1,1], 
+                     'mini':[1,20,20],
+                     'small':[6,20,120], 
+                     'small-n1':[1,20,20]}
+        walltime = ''
+    nodes, ppn, cores = nodes_ppn[queue]
+    return nodes, ppn, cores, walltime
+
+def create_script(queue, commands, config=None, logdir=None, jobname=None, 
+                  nodes=None, ppn=None, cores=None, conda=True, mpirun=True):
+    # get max
+    _nodes, _ppn, _cores, wt = max_resource_info(queue)
+    # 
+    nodes = nodes or _nodes
+    ppn   = ppn   or _ppn
+    cores = cores or _cores
+    # check limit
+    assert nodes <= _nodes, 'max # of nodes for {} is {}'.format(queue, _nodes)
+    assert ppn   <= _ppn  , 'max # of ppn   for {} is {}'.format(queue, _ppn)
+    assert cores <= _cores, 'max # of cores for {} is {}'.format(queue, _cores)
+    assert nodes*ppn >= cores, 'condition of nodes*ppn >= cores is violated: ' \
+            'nodes={}, ppn={}, cores={}'.format(nodes, ppn, cores)
+    # jobname
+    jobname = jobname or queue[0]+queue[-1]+str(os.getpid())
+    # log file directory
+    logdir = logdir or os.path.join(os.getcwd(), 'stdout')
+    logroot= os.path.join(logdir, jobname)
+    # conda environ setup commands
+    envcom = conda_init if conda else ''
+    # run with mpirun
+    if mpirun:
+        commands = ['mpirun -n {} {}'.format(cores, c) for c in commands]
+    # oneline
+    command = ';\n'.join(commands)
+    # configs
+    config = config or ''
+    # write
+    o =template.format(queue, nodes, ppn, 
+                       jobname, 
+                       logroot, logroot, 
+                       wt, 
+                       os.getcwd(), 
+                       logroot, logroot, logroot, 
+                       envcom, 
+                       config, 
+                       command,
+                       logroot, logroot)
+    return o
+
+def write(script):
+    pid = os.getpid()
+    pbsfile = 'pbstmp%d' % (pid)
+    with open(pbsfile, 'w') as f:
+        print(script, file=f)
+    print('Wrote to: {}'.format(pbsfile))
+
+def delete():
+    pid = os.getpid()
+    pbsfile = 'pbstmp%d' % (pid)
+    os.remove(pbsfile)
+
+def submit():
+    pid = os.getpid()
+    pbsfile = 'pbstmp%d' % (pid)
+    os.system('qsub -V {}'.format(pbsfile))
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    # script info
+    parser.add_argument('commands'   , type=str, nargs='+', help='command')
+    parser.add_argument('--config'   , type=str, help='configuration commands', default=None)
+    parser.add_argument('--queue'    , type=str, help='queue', default='tiny')
+    parser.add_argument('--nodes'    , type=int, help='nodes', default=None)
+    parser.add_argument('--ppn'      , type=int, help='ppn'  , default=None)
+    parser.add_argument('--cores'    , type=int, help='cores', default=None)
+    parser.add_argument('--jobname'  , type=str, help='job name', default=None)
+    parser.add_argument('--auto-mpirun', help='flag to mpirun command before every command', action='store_true')
+    parser.add_argument('--no-conda' , help='disable conda init', action='store_true')
+    #parser.add_argument('--mem'  , type=int, help='memory size required', default=4)
+
+    # job actions
+    parser.add_argument('--keep'     , help='flag to keep the script', action='store_true')
+    parser.add_argument('--submit'   , help='flag to submit the job', action='store_true')
+    args = parser.parse_args()
+
+    # get script
+    script = create_script(args.queue, 
+                           args.commands, 
+                           # options
+                           config  = args.config, 
+                           jobname = args.jobname,
+                           nodes   = args.nodes,
+                           ppn     = args.ppn, 
+                           cores   = args.cores,
+                           conda   = not args.no_conda,
+                           mpirun  = args.auto_mpirun)
+    # write script
+    write(script)
+    # submit job
+    submit(script) if args.submit else None
+    # delete
+    None if args.keep else delete()
+
+    
+

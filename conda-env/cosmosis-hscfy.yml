@@ -1,0 +1,36 @@
+name: hscfy
+channels:
+- anaconda
+- conda-forge
+- defaults
+- ssunao
+- nishimichi
+dependencies:
+- astropy
+- cosmosis
+- cosmosis-build-standard-library
+- cython
+- ipykernel
+- matplotlib
+- mpi4py
+- numpy
+- pandas
+- scipy
+- tqdm
+- healpy
+- getdist
+- treecorr
+- pymultinest
+- pyDOE
+- jax
+- jaxlib
+- multinest
+- dark_emulator
+- namaster
+- pip:
+  - cosmopower
+  - tensorflow>=2.16
+  - baccoemu
+  - tf_keras
+  - memory-profiler
+  - colossus
