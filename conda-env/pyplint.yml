@@ -6,7 +6,6 @@ info:
 channels:
   - anaconda
   - conda-forge
-  - defaults
 
 dependencies:
   - jupyterlab
@@ -31,5 +30,4 @@ dependencies:
     - flax
     - optax
     - distrax
-    - scikit-learn
     - getdist
