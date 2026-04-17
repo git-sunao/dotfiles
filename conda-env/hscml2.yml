@@ -1,7 +1,6 @@
 name: hscml2
 description: HSC Microlensing env, compatible with HSCPipe8
 channels:
-  - defaults
   - conda-forge
   - ssunao
 dependencies:

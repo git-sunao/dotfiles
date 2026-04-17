@@ -1,8 +1,6 @@
 name: hscml-small
 channels:
-- anaconda
 - conda-forge
-- defaults
 - ssunao
 dependencies:
 - astropy
