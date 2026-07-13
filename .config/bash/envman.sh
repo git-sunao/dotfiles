@@ -35,3 +35,6 @@ elif [ -n "${CONDDIR:-}" ] && [ -x "${CONDDIR}/bin/conda" ]; then
 fi
 
 # ============================================================
+
+# Add environments
+export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH

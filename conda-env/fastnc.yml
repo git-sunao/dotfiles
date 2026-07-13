@@ -4,9 +4,7 @@ info:
   description: fastnc env
 
 channels:
-  - anaconda
   - conda-forge
-  - defaults
   - nishimichi
 
 dependencies:
@@ -19,12 +17,7 @@ dependencies:
   - tqdm
   - openmp
     #- treecorr
-  - dark_emulator
-  - george
   - cython
   # dev
-  - mpi4py
   - treecorr
-  - pip:
-    - classy
 

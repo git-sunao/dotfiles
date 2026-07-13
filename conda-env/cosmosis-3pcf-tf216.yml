@@ -3,27 +3,37 @@ channels:
 - conda-forge
 - ssunao
 dependencies:
-- astropy
-- cosmosis==3.5.1
-- cosmosis-build-standard-library
-- cython
-- ipykernel
-- matplotlib
-- mpi4py
-- numpy
-- pandas
-- scipy
-- tqdm
-- healpy
-- getdist
-- treecorr
-- pymultinest
-- fastnc
-- pyDOE
-  # - jupyterlab
-- pip:
-  - cosmopower
-  - tensorflow>=2.16
-  - baccoemu
-  - tf_keras
-  - memory-profiler
+  - python=3.10
+  - pip
+  - setuptools
+  - wheel
+  - cmake
+  - ninja
+
+  - numpy=1.26.*
+  - scipy
+  - pandas
+  - matplotlib
+  - cython
+  - tqdm
+  - astropy
+  - healpy
+
+  - cosmosis=3.5.1
+  - cosmosis-build-standard-library
+  - getdist
+  - treecorr
+  - mpi4py
+  - pymultinest
+  - fastnc
+  - pydoe
+  - ipykernel
+
+  - pip:
+      - dm-tree
+      - tensorflow==2.16.2
+      - tf_keras==2.16.0
+      - cosmopower
+      - baccoemu
+      - memory-profiler
+
