@@ -37,17 +37,46 @@ def remove_comments(mainfile):
 
     return lines
 
+def _resolve_input_path(raw_path: str) -> str:
+    # 1) Keep
+    if os.path.exists(raw_path):
+        return raw_path
+
+    # 2) LaTeX compatible: complete .tex ("foo.bar")
+    if not raw_path.lower().endswith(".tex"):
+        cand = raw_path + ".tex"
+        if os.path.exists(cand):
+            return cand
+
+    # 3) not found...
+    tried = [raw_path]
+    if not raw_path.lower().endswith(".tex"):
+        tried.append(raw_path + ".tex")
+    raise FileNotFoundError(f"file not found (tried {tried})")
+
+
 
 def replace_inputs(mainfile):
     lines = []
     for line in mainfile:
         # replace \input{...} with the contents
-        match = re.search(r'\\input{(.+)}', line)
-        if match:
+        # match = re.search(r'\\input{(.+)}', line)
+        # if match:
+        #
+        #     input_filename = match.group(1)
+        #
+        #     with open(input_filename, 'r') as input_file:
+        #         sublines = [f'% LOG by {scriptname}: Replaced input with its content =  {line}'] + input_file.readlines()
+        # else:
+        #     sublines = [line]
 
-            input_filename = match.group(1)
-            with open(input_filename, 'r') as input_file:
-                sublines = [f'% LOG by {scriptname}: Replaced input with its content =  {line}'] + input_file.readlines()
+        m = re.search(r'\\input\{([^}]+)\}', line)
+        if m:
+            raw = m.group(1).strip()
+            path = _resolve_input_path(raw)
+
+            with open(path, "r") as f:
+                sublines = [f"% LOG by {scriptname}: Replaced \\input{{{raw}}} with {path}\n"] + f.readlines()
         else:
             sublines = [line]
 
@@ -116,7 +145,8 @@ def pack(outdir_in, mainfile, figpaths, bibpaths, overwrite=False):
 def compile(outdir, source_filename):
     os.chdir(outdir)
     os.system(f'pwd')
-    os.system(f'latexmk -pdfdvi {source_filename}')
+    # os.system(f'latexmk -pdfdvi {source_filename}')
+    os.system(f'latexmk -pdf {source_filename}')
     os.system(f'latexmk -c')
     os.chdir('../')
 

@@ -52,6 +52,7 @@ def problem3(bib_database):
         'Ć': 'C',
         'Ž': 'Z',
         'ž': 'z',
+        'ń': 'n',
         'ollaboration)': 'ollaboration'
     }
 
@@ -91,7 +92,11 @@ def problem4(bib_database):
         'ć': '{\\\'c}',
         'Ć': '{\\\'C}',
         'Ž': '{\\v{Z}}',
-        'ž': '{\\v{z}}'
+        'ž': '{\\v{z}}',
+        'ń': '{\\\'n}',
+        'ł': '{\\l}',
+        'Ł': '{\\L}',
+        'ź': '{\\\'z}'
     }
     for name in bib_database.entries_dict.keys():
         text = bib_database.entries_dict[name]['author']
@@ -114,6 +119,13 @@ def problem5(bib_database):
     title = bib_database.entries_dict[name]['title']
     bib_database.entries_dict[name]['title'] = title.replace(r'\$10M\_\{\textbackslashodot\}<M<1000M\_\{\textbackslashodot\}\$', r"\(10M_{\odot}<M<1000M_{\odot}\)")
 
+    name = 'Wyrzykowski.Szewczyk.2010'
+    title = bib_database.entries_dict[name]['title']
+    bib_database.entries_dict[name]['title'] = title.replace('★', '')
+
+    name = 'Bera.Collaboration.2026'
+    title = bib_database.entries_dict[name]['title']
+    bib_database.entries_dict[name]['title'] = title.replace(r'\$4\textbackslashtimes3\$', r'$4\times 3$')
 
     print('Solved problem 5')
     return bib_database

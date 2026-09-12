@@ -4,6 +4,8 @@ alias gow="cd ${WORKDIR}"
 alias gop="cd ${PACKDIR}"
 alias ll="ls -l"
 alias ls='ls -G --color=auto'
+alias grep='grep --color=auto'
+alias goc="cd ${HOME}/Documents/Codex"
 
 # Jupyter alias
 alias jl="jupyter lab"

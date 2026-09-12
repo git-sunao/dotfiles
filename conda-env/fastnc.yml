@@ -17,7 +17,7 @@ dependencies:
   - ipykernel
   - astropy
   - tqdm
-  - openmp
+  # - openmp or llvm-openmp
     #- treecorr
   - dark_emulator
   - george

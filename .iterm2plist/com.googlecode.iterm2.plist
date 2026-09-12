@@ -19,9 +19,9 @@
 	<key>Actions</key>
 	<array/>
 	<key>AiMaxTokens</key>
-	<integer>400000</integer>
+	<integer>1050000</integer>
 	<key>AiModel</key>
-	<string>gpt-5.1</string>
+	<string>gpt-5.5</string>
 	<key>AiResponseMaxTokens</key>
 	<integer>128000</integer>
 	<key>AitermURL</key>
@@ -3910,6 +3910,8 @@
 	<key>Print In Black And White</key>
 	<true/>
 	<key>ShowFullScreenTabBar</key>
+	<false/>
+	<key>ShowSecureKeyboardEntryIndicator</key>
 	<false/>
 	<key>SoundForEsc</key>
 	<false/>
