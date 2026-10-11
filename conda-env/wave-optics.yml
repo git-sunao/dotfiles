@@ -1,0 +1,36 @@
+name: wave
+
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  # general
+  - ipykernel
+  - numpy
+  - scipy
+  - matplotlib
+  - tqdm
+  - astropy
+  - pandas
+  - getdist
+  - pymultinest
+  # lens
+  - lenstronomy
+  # fiona
+  - numexpr
+  - psutil 
+  - finufft
+  # GLoW
+  - gsl
+  - llvm-openmp
+  - libcblas
+  # AD
+  - pytorch
+  - pip:
+    - jax
+    - pyro-ppl
+    - numpyro
+    - flax
+    - optax
+    - distrax

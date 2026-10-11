@@ -1,0 +1,17 @@
+[colors.primary]
+background = "0x011627"
+
+[font.normal]
+family = "Hack Nerd Font"
+style = "Regular"
+
+[font]
+size = 14.0
+
+[scrolling]
+history = 5000
+
+[window.dimensions]
+columns = 0
+lines = 0
+

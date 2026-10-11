@@ -1,0 +1,503 @@
+#!/usr/bin/env python3
+
+import argparse
+import difflib
+import json
+import re
+import sys
+from pathlib import Path
+
+
+DISPLAY_RE = re.compile(
+    r"\\\[\s*(.*?)\s*\\\]",
+    flags=re.DOTALL,
+)
+
+INLINE_RE = re.compile(
+    r"\\\((.*?)\\\)",
+    flags=re.DOTALL,
+)
+
+
+# ANSI escape sequences
+RESET = "\033[0m"
+RED = "\033[31m"
+GREEN = "\033[32m"
+DIM = "\033[2m"
+BOLD = "\033[1m"
+
+RED_HL = "\033[1;37;41m"
+GREEN_HL = "\033[1;30;42m"
+
+
+def convert_equations(text: str) -> str:
+    r"""
+    Convert LaTeX delimiters in Markdown text:
+
+        \[ ... \]  ->  $$ ... $$
+        \( ... \)  ->  $ ... $
+    """
+
+    text = DISPLAY_RE.sub(
+        lambda m: "$$\n" + m.group(1).strip() + "\n$$",
+        text,
+    )
+
+    text = INLINE_RE.sub(
+        lambda m: "$" + m.group(1).strip() + "$",
+        text,
+    )
+
+    return text
+
+
+def highlight_pair(old: str, new: str) -> tuple[str, str]:
+    """
+    Highlight character-level differences between two corresponding lines.
+    """
+
+    matcher = difflib.SequenceMatcher(None, old, new)
+
+    old_parts = []
+    new_parts = []
+
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        old_chunk = old[i1:i2]
+        new_chunk = new[j1:j2]
+
+        if tag == "equal":
+            old_parts.append(old_chunk)
+            new_parts.append(new_chunk)
+
+        elif tag == "delete":
+            old_parts.append(
+                f"{RED_HL}{old_chunk}{RESET}{RED}"
+            )
+
+        elif tag == "insert":
+            new_parts.append(
+                f"{GREEN_HL}{new_chunk}{RESET}{GREEN}"
+            )
+
+        elif tag == "replace":
+            old_parts.append(
+                f"{RED_HL}{old_chunk}{RESET}{RED}"
+            )
+            new_parts.append(
+                f"{GREEN_HL}{new_chunk}{RESET}{GREEN}"
+            )
+
+    return "".join(old_parts), "".join(new_parts)
+
+
+def print_compact_diff(
+    old_text: str,
+    new_text: str,
+    filename: Path,
+    cell_index: int,
+) -> None:
+    """
+    Print changed lines only, with character-level highlighting.
+    """
+
+    old_lines = old_text.splitlines()
+    new_lines = new_text.splitlines()
+
+    matcher = difflib.SequenceMatcher(
+        None,
+        old_lines,
+        new_lines,
+    )
+
+    print(
+        f"{BOLD}{filename}: markdown cell {cell_index}{RESET}"
+    )
+
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag == "equal":
+            continue
+
+        old_block = old_lines[i1:i2]
+        new_block = new_lines[j1:j2]
+
+        if tag == "replace":
+            npaired = min(
+                len(old_block),
+                len(new_block),
+            )
+
+            for k in range(npaired):
+                old_line, new_line = highlight_pair(
+                    old_block[k],
+                    new_block[k],
+                )
+
+                print(
+                    f"{RED}- {old_line}{RESET}"
+                )
+                print(
+                    f"{GREEN}+ {new_line}{RESET}"
+                )
+
+            for line in old_block[npaired:]:
+                print(
+                    f"{RED}- {line}{RESET}"
+                )
+
+            for line in new_block[npaired:]:
+                print(
+                    f"{GREEN}+ {line}{RESET}"
+                )
+
+        elif tag == "delete":
+            for line in old_block:
+                print(
+                    f"{RED}- {line}{RESET}"
+                )
+
+        elif tag == "insert":
+            for line in new_block:
+                print(
+                    f"{GREEN}+ {line}{RESET}"
+                )
+
+    print()
+
+
+def print_unified_diff(
+    old_text: str,
+    new_text: str,
+    filename: Path,
+    cell_index: int,
+) -> None:
+    """
+    Print a standard unified diff.
+    """
+
+    diff = difflib.unified_diff(
+        old_text.splitlines(),
+        new_text.splitlines(),
+        fromfile=f"{filename}:cell[{cell_index}]:before",
+        tofile=f"{filename}:cell[{cell_index}]:after",
+        lineterm="",
+    )
+
+    output = "\n".join(diff)
+
+    if output:
+        print(output)
+        print()
+
+
+def process_notebook(
+    infile: Path,
+    outfile: Path,
+    *,
+    dry_run: bool = False,
+    compact_diff: bool = False,
+    unified_diff: bool = False,
+    verbose: bool = False,
+) -> tuple[int, int]:
+    """
+    Process a single Jupyter notebook.
+
+    Returns
+    -------
+    changed_cells, total_markdown_cells
+    """
+
+    try:
+        with infile.open("r", encoding="utf-8") as f:
+            nb = json.load(f)
+
+    except FileNotFoundError:
+        raise RuntimeError(
+            f"file not found: {infile}"
+        )
+
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            f"invalid JSON: {infile}: {exc}"
+        )
+
+    except OSError as exc:
+        raise RuntimeError(
+            f"cannot read {infile}: {exc}"
+        )
+
+    changed_cells = 0
+    total_markdown_cells = 0
+
+    if verbose:
+        print(
+            f"{DIM}Processing {infile}{RESET}"
+        )
+
+    for cell_index, cell in enumerate(
+        nb.get("cells", [])
+    ):
+        if cell.get("cell_type") != "markdown":
+            continue
+
+        total_markdown_cells += 1
+
+        source = cell.get("source", [])
+
+        if isinstance(source, list):
+            old_text = "".join(source)
+
+        elif isinstance(source, str):
+            old_text = source
+
+        else:
+            if verbose:
+                print(
+                    f"{DIM}"
+                    f"  skip cell {cell_index}: "
+                    f"unsupported source type"
+                    f"{RESET}"
+                )
+            continue
+
+        new_text = convert_equations(old_text)
+
+        if new_text == old_text:
+            continue
+
+        changed_cells += 1
+
+        if compact_diff:
+            print_compact_diff(
+                old_text,
+                new_text,
+                infile,
+                cell_index,
+            )
+
+        elif unified_diff:
+            print_unified_diff(
+                old_text,
+                new_text,
+                infile,
+                cell_index,
+            )
+
+        elif verbose:
+            print(
+                f"  markdown cell {cell_index}: changed"
+            )
+
+        if not dry_run:
+            if isinstance(source, list):
+                cell["source"] = new_text.splitlines(
+                    keepends=True
+                )
+            else:
+                cell["source"] = new_text
+
+    if not dry_run and changed_cells:
+        try:
+            outfile.parent.mkdir(
+                parents=True,
+                exist_ok=True,
+            )
+
+            with outfile.open(
+                "w",
+                encoding="utf-8",
+            ) as f:
+                json.dump(
+                    nb,
+                    f,
+                    ensure_ascii=False,
+                    indent=1,
+                )
+                f.write("\n")
+
+        except OSError as exc:
+            raise RuntimeError(
+                f"cannot write {outfile}: {exc}"
+            )
+
+    return changed_cells, total_markdown_cells
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        prog="fixeq",
+        description=(
+            r"Convert \[...\] to $$...$$ and "
+            r"\(...\) to $...$ in Jupyter Notebook "
+            r"Markdown cells."
+        ),
+    )
+
+    parser.add_argument(
+        "files",
+        nargs="+",
+        type=Path,
+        metavar="FILE",
+        help="Jupyter notebook(s) to process",
+    )
+
+    parser.add_argument(
+        "-n",
+        "--dry-run",
+        action="store_true",
+        help=(
+            "show how many Markdown cells would change "
+            "without writing files"
+        ),
+    )
+
+    parser.add_argument(
+        "-d",
+        "--diff",
+        action="store_true",
+        help=(
+            "show compact colored diff of changed lines only; "
+            "implies --dry-run"
+        ),
+    )
+
+    parser.add_argument(
+        "-u",
+        "--unified",
+        action="store_true",
+        help=(
+            "show standard unified diff; "
+            "implies --dry-run"
+        ),
+    )
+
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="show detailed processing information",
+    )
+
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        metavar="FILE",
+        help=(
+            "write to FILE instead of overwriting input "
+            "(only valid with a single input file)"
+        ),
+    )
+
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+
+    if args.output is not None and len(args.files) != 1:
+        print(
+            "fixeq: error: -o/--output can only be used "
+            "with one input file",
+            file=sys.stderr,
+        )
+        return 2
+
+    if args.diff and args.unified:
+        print(
+            "fixeq: error: -d/--diff and -u/--unified "
+            "cannot be used together",
+            file=sys.stderr,
+        )
+        return 2
+
+    # Diff modes always imply dry-run.
+    dry_run = (
+        args.dry_run
+        or args.diff
+        or args.unified
+    )
+
+    total_changed = 0
+    errors = 0
+
+    for infile in args.files:
+        outfile = (
+            args.output
+            if args.output is not None
+            else infile
+        )
+
+        try:
+            changed, total = process_notebook(
+                infile,
+                outfile,
+                dry_run=dry_run,
+                compact_diff=args.diff,
+                unified_diff=args.unified,
+                verbose=args.verbose,
+            )
+
+        except RuntimeError as exc:
+            print(
+                f"fixeq: error: {exc}",
+                file=sys.stderr,
+            )
+            errors += 1
+            continue
+
+        total_changed += changed
+
+        if args.diff or args.unified:
+            if args.verbose:
+                print(
+                    f"{infile}: "
+                    f"{changed}/{total} Markdown cell(s) "
+                    f"would be modified"
+                )
+
+        elif args.dry_run:
+            print(
+                f"{infile}: would modify "
+                f"{changed}/{total} Markdown cell(s)"
+            )
+
+        elif changed:
+            if args.output is not None:
+                print(
+                    f"{infile} -> {outfile}: "
+                    f"{changed} Markdown cell(s) modified"
+                )
+            else:
+                print(
+                    f"{infile}: "
+                    f"{changed} Markdown cell(s) modified"
+                )
+
+        elif args.verbose:
+            print(
+                f"{infile}: no changes"
+            )
+
+    if (
+        len(args.files) > 1
+        and (
+            args.dry_run
+            or args.verbose
+        )
+    ):
+        if dry_run:
+            print(
+                f"\nTotal: {total_changed} Markdown "
+                f"cell(s) would be modified"
+            )
+        else:
+            print(
+                f"\nTotal: {total_changed} Markdown "
+                f"cell(s) modified"
+            )
+
+    return 1 if errors else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
