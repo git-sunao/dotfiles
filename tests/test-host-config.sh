@@ -121,3 +121,54 @@ run '
     if . "$CONFIG_DIR/envman.sh" 2> "$TEST_ROOT/error"; then exit 1; fi
 '
 printf 'PASS: missing array and unavailable installations fail explicitly\n'
+
+# Substitute only the installed config path to exercise .bashrc without changing HOME.
+sed 's|\$HOME/.config/bash|$CONFIG_DIR|g' "$source_dir/../../rc/bashrc" > "$test_root/bashrc"
+printf 'export STARTUP_PACKAGE=loaded\n' > "$config_dir/package.sh"
+printf 'export STARTUP_ALIAS=loaded\n' > "$config_dir/alias.sh"
+printf 'export STARTUP_TYPING=loaded\n' > "$config_dir/typing.sh"
+/usr/bin/env -i HOME="$HOME" PATH=/usr/bin:/bin TERM=xterm TEST_ROOT="$test_root" CONFIG_DIR="$config_dir" /bin/bash --noprofile --norc -iec '
+    export FAIL_MAMBA=1
+    . "$TEST_ROOT/bashrc" 2> "$TEST_ROOT/startup.error"
+    [ "$STARTUP_PACKAGE" = loaded ]
+    [ "$STARTUP_ALIAS" = loaded ]
+    [ "$STARTUP_TYPING" = loaded ]
+    case "$PS1" in *"\\t]"*) ;; *) exit 1 ;; esac
+    grep -q "mamba shell initialization failed" "$TEST_ROOT/startup.error"
+    grep -q "continuing shell setup" "$TEST_ROOT/startup.error"
+    declare -F conda >/dev/null
+'
+printf 'PASS: mamba failure is reported without suppressing aliases and prompt\n'
+
+cat > "$test_root/primary/etc/profile.d/mamba.sh" <<'MOCK'
+printf 'profile\n' >> "$TEST_ROOT/mamba-profile.calls"
+declare -F conda >/dev/null || return 1
+mamba() { :; }
+MOCK
+run '
+    . "$CONFIG_DIR/host.sh"
+    export FAIL_MAMBA=1 CONDA_DEFAULT_ENV=project CONDA_PROMPT_MODIFIER="(project) "
+    . "$CONFIG_DIR/envman.sh"
+    . "$CONFIG_DIR/envman.sh"
+    declare -F conda mamba >/dev/null
+    [ "$(wc -l < "$TEST_ROOT/mamba-profile.calls")" -eq 1 ]
+    [ "$MAMBA_EXE" = "$TEST_ROOT/primary/bin/mamba" ]
+    [ "$MAMBA_ROOT_PREFIX" = "$TEST_ROOT/primary" ]
+    [ "$CONDA_DEFAULT_ENV" = project ]
+    . "$CONFIG_DIR/display.sh"
+    case "$PS1" in "(project) "*) ;; *) exit 1 ;; esac
+'
+printf 'PASS: legacy mamba profile fallback initializes once and preserves the active environment\n'
+printf 'return 7\n' > "$test_root/primary/etc/profile.d/mamba.sh"
+run '
+    . "$CONFIG_DIR/host.sh"
+    export FAIL_MAMBA=1
+    if . "$CONFIG_DIR/envman.sh"; then exit 1; fi
+'
+printf 'PASS: a failing legacy profile still returns failure\n'
+run '
+    . "$CONFIG_DIR/host.sh"
+    . "$CONFIG_DIR/envman.sh"
+    declare -F mamba >/dev/null
+'
+printf 'PASS: modern hook takes precedence over the legacy profile\n'
