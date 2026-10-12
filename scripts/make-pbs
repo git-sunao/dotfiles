@@ -1,0 +1,102 @@
+#!/bin/bash
+if [ "${BASH_SOURCE[0]}" != "$0" ]; then
+    printf 'make-pbs: execute this script; do not source it.\n' >&2
+    return 0
+fi
+set -eu
+
+die() { printf 'make-pbs: %s\n' "$*" >&2; exit 1; }
+
+queue= nodes= ppn= walltime= output= setup=
+name=job
+workdir=$PWD
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --help|-h)
+            cat <<'HELP'
+Usage: make-pbs --queue QUEUE --nodes N --ppn N --walltime HH:MM:SS
+                --output FILE [--name NAME] [--workdir DIR] [--setup FILE]
+                -- COMMAND [ARG ...]
+
+Generate a nodes/ppn-style PBS script without submitting or executing anything.
+Checks nodes * ppn against resources_max.ncpus from qstat -Qf QUEUE.
+An unavailable or missing CPU limit is an error. Other limits are not checked.
+Run on the target cluster. Workdir defaults to the current directory; name to job.
+The job loads ~/.bashrc, enters workdir, sources optional setup, then runs COMMAND.
+Put conda activation, modules and thread settings in setup. Supply MPI explicitly.
+Logs use PBS defaults. Existing output files are never replaced.
+HELP
+            exit 0 ;;
+        --) shift; break ;;
+        --queue|--nodes|--ppn|--walltime|--output|--name|--workdir|--setup)
+            [ "$#" -ge 2 ] || die "missing value for $1" ;;
+        *) die "unknown option $1; use -- before COMMAND" ;;
+    esac
+    case "$1" in
+        --queue) queue=$2 ;;
+        --nodes) nodes=$2 ;;
+        --ppn) ppn=$2 ;;
+        --walltime) walltime=$2 ;;
+        --output) output=$2 ;;
+        --name) name=$2 ;;
+        --workdir) workdir=$2 ;;
+        --setup) setup=$2; [ -n "$setup" ] || die 'setup path is empty' ;;
+    esac
+    shift 2
+done
+
+[ -n "$queue" ] && [ -n "$nodes" ] && [ -n "$ppn" ] &&
+    [ -n "$walltime" ] && [ -n "$output" ] ||
+    die 'queue, nodes, ppn, walltime and output are required (see --help)'
+[ "$#" -gt 0 ] && [ -n "$1" ] || die 'provide COMMAND after --'
+[[ "$queue" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$ ]] || die 'invalid queue name'
+[[ "$name" =~ ^[a-zA-Z][a-zA-Z0-9_.-]*$ ]] || die 'invalid job name'
+[[ "$nodes" =~ ^[1-9][0-9]*$ ]] || die 'nodes must be a positive integer'
+[[ "$ppn" =~ ^[1-9][0-9]*$ ]] || die 'ppn must be a positive integer'
+[[ "$walltime" =~ ^[0-9]+:[0-5][0-9]:[0-5][0-9]$ ]] &&
+    [[ "$walltime" =~ [1-9] ]] || die 'walltime must be positive HH:MM:SS (hours may exceed 24)'
+workdir=$(cd -P -- "$workdir" && pwd) || die 'workdir is not an accessible directory'
+if [ -n "$setup" ]; then
+    [ -f "$setup" ] && [ -r "$setup" ] || die 'setup must be a readable file'
+    setup="$(cd -P -- "$(dirname -- "$setup")" && pwd)/$(basename -- "$setup")"
+fi
+[ ! -e "$output" ] && [ ! -L "$output" ] || die "output already exists: $output"
+
+queue_info=$(qstat -Qf "$queue") || die "could not read queue $queue using qstat"
+cpu_limit=$(printf '%s\n' "$queue_info" | awk -v queue="$queue" '
+    $1 == "Queue:" { selected = ($2 == queue) }
+    selected && $1 == "resources_max.ncpus" && $2 == "=" && NF == 3 { print $3 }
+')
+[[ "$cpu_limit" =~ ^(0|[1-9][0-9]*)$ ]] ||
+    die "queue $queue: resources_max.ncpus is missing or invalid"
+[ "${#nodes}" -le 18 ] && [ "${#ppn}" -le 18 ] && [ "${#cpu_limit}" -le 18 ] ||
+    die 'CPU counts are too large for integer arithmetic'
+# Division checks the same limit without overflowing nodes * ppn.
+[ "$nodes" -le "$((cpu_limit / ppn))" ] ||
+    die "queue $queue: nodes=$nodes * ppn=$ppn exceeds CPU limit $cpu_limit"
+
+# Build the text before opening output. Shell arguments are quoted, never evaluated.
+pbs=$(
+    printf '#!/bin/bash\n#PBS -S /bin/bash\n#PBS -q %s\n' "$queue"
+    printf '#PBS -l nodes=%s:ppn=%s\n#PBS -l walltime=%s\n' "$nodes" "$ppn" "$walltime"
+    printf '#PBS -N %s\n#PBS -m n\n\n' "$name"
+    cat <<'PBS'
+if [ "${BASH_SOURCE[0]}" != "$0" ]; then
+    printf 'Execute this job script; do not source it.\n' >&2
+    return 0
+fi
+set -e
+trap 'job_status=$?; printf "finished %s exit=%s\n" "$(date -u +%FT%TZ)" "$job_status"; exit "$job_status"' EXIT
+printf 'started %s\n' "$(date -u +%FT%TZ)"
+. "$HOME/.bashrc"
+PBS
+    printf 'cd -- %q\n' "$workdir"
+    if [ -n "$setup" ]; then printf '. %q\n' "$setup"; fi
+    # An array also treats shell keywords and assignment-like words as commands.
+    printf '\njob_command=('
+    printf '%q ' "$@"
+    printf ')\n"${job_command[@]}"\n'
+)
+# noclobber also protects a file created after the existence check.
+(set -C; printf '%s\n' "$pbs" > "$output") || die "could not create $output"
+printf 'Generated %s (CPUs %s/%s; not submitted).\n' "$output" "$((nodes * ppn))" "$cpu_limit"
