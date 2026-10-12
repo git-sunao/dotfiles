@@ -1,0 +1,10 @@
+#!/bin/bash
+# Copy to host.sh or link host.sh to a file in a separate private repository.
+# This file is sourced as Bash code. Keep it limited to trusted settings.
+export WORK_HOST=example
+export WORKDIR="$HOME/work"
+export PACKDIR="$HOME/packages"
+export LOCAL_WORKDIR= LOCAL_BIGDATA=
+export PROMPT_COLOR='\e[0;32m'
+# First installed root wins. Use () to skip conda/mamba initialization.
+CONDA_ROOTS=("$HOME/miniforge3" "$HOME/miniconda3")
