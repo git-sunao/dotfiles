@@ -1,4 +1,10 @@
 #!/bin/bash
+# Sourcing would leak options and traps into the caller, or exit its shell.
+# Return success so even a caller with errexit enabled stays alive.
+if [ "${BASH_SOURCE[0]}" != "$0" ]; then
+    printf 'init.sh: run "bash init.sh" instead of sourcing; nothing changed.\n' >&2
+    return 0
+fi
 set -eu
 
 check_only=false

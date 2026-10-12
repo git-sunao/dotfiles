@@ -28,6 +28,44 @@ assert_no_links() {
         assert_absent "$test_home/.config/$app"
     done
 }
+
+# Sourcing must neither exit the calling shell nor alter its options or traps.
+# Use a separate Bash so a regression cannot terminate this test driver.
+for source_mode in source dot; do
+    for caller_options in relaxed strict; do
+        /usr/bin/env TEST_HOME="$test_home" FIXTURE_INIT="$fixture_repo/init.sh" \
+            SOURCE_MODE="$source_mode" CALLER_OPTIONS="$caller_options" \
+            /bin/bash --noprofile --norc -c '
+                set +e +u
+                if [ "$CALLER_OPTIONS" = strict ]; then set -eu; fi
+                trap ":" EXIT
+                trap ":" HUP INT TERM
+                before_options=$(set +o)
+                before_flags=$-
+                before_traps=$(trap -p)
+                if [ "$SOURCE_MODE" = source ]; then
+                    source "$FIXTURE_INIT"
+                else
+                    . "$FIXTURE_INIT"
+                fi
+                [ "$-" = "$before_flags" ] || exit 1
+                [ "$(set +o)" = "$before_options" ] || exit 1
+                [ "$(trap -p)" = "$before_traps" ] || exit 1
+                if [ "$CALLER_OPTIONS" = relaxed ]; then
+                    false
+                    unset dotfiles_unset_fixture
+                    : "$dotfiles_unset_fixture"
+                fi
+                printf "caller survived\n"
+            ' > "$test_root/source-output" 2>&1
+        grep -q 'caller survived' "$test_root/source-output"
+        grep -q 'nothing changed' "$test_root/source-output"
+        assert_absent "$test_home/.config"
+        assert_no_links
+    done
+done
+printf 'PASS: source and dot leave caller options, traps, and subsequent commands intact\n'
+
 run_init --check
 assert_no_links
 assert_absent "$test_home/.config"

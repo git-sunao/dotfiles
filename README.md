@@ -20,6 +20,8 @@ bash init.sh --check
 bash init.sh
 ```
 
+Use `bash init.sh`, not `source init.sh` or `. init.sh`.
+
 `--check` makes no changes. Setup installs links for the files in `rc/` and the
 managed applications in `config/`. Existing custom settings cause a conflict;
 review and back them up before retrying. Unrelated applications are left alone.
