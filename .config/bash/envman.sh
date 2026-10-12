@@ -37,8 +37,12 @@ _dotfiles_init_conda() {
             export MAMBA_EXE="$root/bin/mamba" MAMBA_ROOT_PREFIX="$root"
             if setup=$("$MAMBA_EXE" shell hook --shell bash --root-prefix "$root" 2>/dev/null); then
                 eval "$setup" || return
+            elif [ -r "$root/etc/profile.d/mamba.sh" ]; then
+                # Older mamba uses a profile script instead of the shell subcommand.
+                . "$root/etc/profile.d/mamba.sh" || return
             else
                 printf 'envman.sh: mamba shell initialization failed: %s\n' "$MAMBA_EXE" >&2
+                printf 'envman.sh: shell hook failed and %s/etc/profile.d/mamba.sh is unavailable\n' "$root" >&2
                 return 1
             fi
         fi

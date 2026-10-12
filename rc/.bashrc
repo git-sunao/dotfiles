@@ -18,8 +18,12 @@ case $- in
     *) return 0 ;;
 esac
 
-# Dependencies first, followed by interactive preferences.
-for _dotfiles_config in envman package alias display typing; do
+# A tool initialization failure must not prevent basic interactive shell setup.
+if ! . "$HOME/.config/bash/envman.sh"; then
+    printf '.bashrc: conda/mamba initialization failed; continuing shell setup\n' >&2
+fi
+
+for _dotfiles_config in package alias display typing; do
     . "$HOME/.config/bash/$_dotfiles_config.sh" || return
 done
 unset _dotfiles_config

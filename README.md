@@ -80,6 +80,9 @@ For interactive shells, `.bashrc` sources `envman.sh`, `package.sh`, `alias.sh`,
 `display.sh`, and `typing.sh`, in that order. An optional Git-ignored
 `interactive.local.sh` runs last. Arbitrary `*.sh` files are not auto-loaded.
 `envman.sh` expects `CONDA_ROOTS` to have been set; it does not load host settings.
+If tool initialization fails, `.bashrc` reports it and continues loading aliases
+and the prompt. Sourcing `envman.sh` directly still returns failure for jobs that
+need to stop when activation setup is unavailable.
 
 For non-interactive jobs, source `.bashrc` to load both host settings and the
 common command PATH:
@@ -100,7 +103,9 @@ new configuration automatically.
 root. Matching shell functions are not reinitialized on repeated reads. Once a
 root is selected, initialization failure does not select another installation.
 Conda retains its profile-script and executable-PATH fallback; the PATH-only
-fallback does not itself provide `conda activate`. Mamba hook failure is reported.
+fallback does not itself provide `conda activate`. Mamba first tries `shell hook`,
+then falls back to the installation's `etc/profile.d/mamba.sh` for older versions.
+If neither initialization method succeeds, it returns an error.
 An empty array skips initialization; a nonempty array without an available
 executable is an error. Each tool's configuration controls base auto-activation.
 
