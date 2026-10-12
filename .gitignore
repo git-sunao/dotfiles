@@ -1,20 +1,25 @@
 
 scripts/cisco2ipmu
 scripts/sshproxy.sh
-.config/nvim/plugin/
+config/nvim/plugin/
 
 .DS_Store
 __pycache__
 
 # Host-local settings, credentials, and generated application state.
 /private/
-.config/bash/host.sh
+config/bash/host.sh
 # Ignore retired local settings too, if restored from a backup.
-.config/bash/host.env
-.config/bash/host.local
-.config/bash/interactive.local.sh
-.config/github-copilot/
+config/bash/host.env
+config/bash/host.local
+config/bash/interactive.local.sh
+config/github-copilot/
 scripts/ciscopass
 scripts/cisco2ipmu-man
 .bashrc_bak
-.config/git/gitk
+config/git/gitk
+
+# Local leftovers from the former whole-directory installation.
+/.config/
+# Optional local compatibility link for iTerm2's former custom preference path.
+/.iterm2plist

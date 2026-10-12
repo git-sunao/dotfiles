@@ -10,6 +10,9 @@ else
     export LS_COLORS="di=34:ln=36:so=32:pi=33:ex=31:bd=34;46:cd=37;44:*.mp3=35"
 fi
 
+# Expand directory variables during completion; older Bash may lack this option.
+shopt -s direxpand 2>/dev/null || :
+
 # Ignore duplicate commands in the history
 export HISTCONTROL=ignoreboth
 

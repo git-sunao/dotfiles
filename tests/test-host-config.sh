@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-source_dir=${1:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.config/bash" && pwd)}
+source_dir=${1:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../config/bash" && pwd)}
 test_root=$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-host-test.XXXXXX")
 test_root=$(cd -P -- "$test_root" && pwd)
 trap 'rm -rf -- "$test_root"' EXIT

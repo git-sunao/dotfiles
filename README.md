@@ -1,5 +1,128 @@
 # dotfiles
 
+## Initial setup
+
+Run the setup script from this checkout (the checkout need not be at `~/dotfiles`):
+
+```bash
+bash init.sh --check
+bash init.sh
+```
+
+`init.sh` replaces the old `link.sh`. It links `~/.bashrc`, `~/.latexmkrc`,
+`~/.gitignore_global`, and `~/.inputrc` to the corresponding files in `rc/`,
+whose source names have no leading dot. It creates `~/.config` as a real directory
+if absent, and links only the explicitly managed applications: `alacritty`,
+`bash`, `git`, `htop`, `iterm2`, `matplotlib`, and `nvim`, each to `config/<app>`.
+Other applications and local directories are not automatically installed.
+It checks all sources and destinations before
+making changes. Existing symlinks that resolve to the intended target are left
+alone, including relative symlinks. Recognized legacy links to this same checkout
+are migrated as described below, even if their old targets disappeared during
+`git pull`. Other files, directories, links elsewhere, and unknown dangling links
+are conflicts: the script lists them and exits unsuccessfully without changing
+anything. Missing source files also stop setup. `--check`
+performs only this inspection and is safe to run against an existing installation.
+
+Review conflicting settings and migrate host-specific values into your private
+host file before manually moving the originals to a backup outside the public
+repository. Then rerun setup. There is no force option or automatic replacement
+of custom settings. An existing real `~/.config` directory is kept, and unrelated
+applications inside it are left alone. Existing managed application directories
+are conflicts; their contents are not automatically merged. A whole-directory
+link at `~/.config` is migrated only if it points to this checkout's `.config`
+or `config`; all other links and regular files there are conflicts.
+An error during application stops the script; completed copies or links may
+remain. Original legacy settings are retained for recovery. Do not run multiple
+setup processes or edit the affected files concurrently during migration.
+
+Older `link.sh` versions pointed `~/.gitignore_global` at the nonexistent
+`rc/.gitignore_global`. The current source is `rc/gitignore_global`.
+Links to that old path or the former checkout-root `.gitignore_global` are
+recognized and updated, including dangling links.
+
+`init.sh` does not modify `.bash_profile`, `.bash_login`, or `.profile`, or choose
+a host configuration. Inspect existing login profiles for site initialization
+and settings that need migration. After setting up `host.sh` as described below,
+a Bash login profile with no remaining site-specific initialization can contain:
+
+```bash
+if [ -r "$HOME/.bashrc" ]; then
+    . "$HOME/.bashrc"
+fi
+```
+
+Keep any required site initialization before this block. Configure the host file
+and login profile before testing a new terminal or SSH session.
+
+### Migrating an existing installation
+
+Keep the current shell open while updating the repository, then run:
+
+```bash
+bash init.sh --check
+bash init.sh
+```
+
+The check lists `RELINK`, `MIGRATE`, and `PRESERVE` operations without executing
+them. Only known old paths inside this exact checkout qualify: the four
+home-level settings and the old whole-config or per-application links. Absolute
+and relative links are recognized when their target parent can be resolved;
+known absolute old paths also work when their parent has disappeared. Links to
+another checkout are not adopted. If a surviving old home-level target contains
+different content from the new source, migration stops for review.
+
+For a whole-config migration, a new real `~/.config` is prepared before the old
+link is detached. Leftovers in the old tree for managed applications are copied
+into missing locations in `config/<app>`; this includes `host.sh` and
+`interactive.local.sh`. Unmanaged application settings are copied into the new
+`~/.config`. Existing identical regular files or equivalent symlinks can be kept;
+different content or incompatible entry types stop the entire preflight. File
+and directory permissions are preserved. Symlinks into the migrated tree are
+updated to refer to the new locations, including tracked targets already removed
+from the old tree by `git pull`. Links outside that tree retain their targets;
+relative references become absolute so moving the link does not change their
+meaning. Sockets, FIFOs, other
+special files, and uninspectable directories require manual handling and block
+migration rather than being silently omitted.
+
+The old checkout `.config/` contents are never deleted and remain Git-ignored.
+They serve as a recovery copy. References outside the migrated settings are not
+rewritten, so review any other uses before removing the old tree. Host selection is
+preserved, not inferred from the machine name. No login profile is rewritten.
+Check a new shell before closing the existing session. Review any additional
+local files copied into managed application directories before committing;
+the installer does not stage or commit anything.
+
+During the whole-directory switch, `~/.config.init-pending/` temporarily records
+the original link, the prepared directory, and its filesystem identity. An error
+or catchable interruption after detaching the old link restores it if `~/.config`
+is still absent. After an uncatchable interruption such as `SIGKILL`, rerun
+`bash init.sh --check` and `bash init.sh`: the record identifies the unfinished
+migration even when `~/.config` is absent, or recognizes that the new directory
+was already installed. The check does not restore links or modify the record.
+If a different configuration has appeared in the meantime, setup stops for
+review instead of replacing it. A successful retry removes the recovery record.
+Do not delete that record while recovering, or run multiple installers at once.
+An abrupt kill may leave an unused `.config.init.*` temporary directory; these
+are not active configuration and can be removed after recovery.
+
+The former `.iterm2plist/` directory is now `iterm2plist/`. If iTerm2 is configured
+to load preferences from that custom folder, update its custom preference folder
+to the new path. This is separate from the `~/.config/iterm2` application link;
+`init.sh` does not change iTerm2 preferences on other machines.
+Until that preference can be changed, a local `.iterm2plist -> iterm2plist`
+compatibility symlink preserves the old path. This link is Git-ignored;
+the actual preference file is stored only in `iterm2plist/`.
+
+### Repository layout
+
+`rc/` contains files installed directly in the home directory; `config/` holds
+application settings; `scripts/` holds shared commands; `private/` holds the
+independent private host repository; `tests/` holds checks; `conda-env/` holds
+environment definitions; `iterm2plist/` holds the custom iTerm2 preferences.
+The repository's own `.gitignore` retains its required name.
+
 ## Host settings
 
 Keep common startup scripts and `host.sh.example` in this public repository.
@@ -13,7 +136,7 @@ private Git repository named `dotfiles-private` on GitHub; it is not a submodule
 ```
 
 Create one ordinary Bash file per environment in the private directory, using
-`.config/bash/host.sh.example` as a starting point. For example, after saving
+`config/bash/host.sh.example` as a starting point. For example, after saving
 settings as `~/dotfiles/private/cluster-a.sh`, install the local link:
 
 ```bash
@@ -21,7 +144,7 @@ ln -s "$HOME/dotfiles/private/cluster-a.sh" "$HOME/.config/bash/host.sh"
 ```
 
 The command fails if `host.sh` already exists; inspect it before replacing it.
-The installation must already make this repository's `.config/bash` available
+The installation must already make this repository's `config/bash` available
 at `~/.config/bash`. `host.sh` is Git-ignored, including when it is a symlink.
 Do not add actual host files or their private paths to the public repository.
 An independent local `host.sh` also works if Git synchronization is unnecessary.
@@ -66,7 +189,7 @@ not automatically reload settings after a pull.
 ## Bash startup
 
 These scripts support macOS system Bash 3.2. With `~/.bashrc` linked to
-`rc/.bashrc` and `~/.config` linked to this repository's `.config`, edits affect
+`rc/bashrc` and `~/.config/bash` linked to this repository's `config/bash`, edits affect
 new shells before a commit is made.
 
 `.bashrc` sources `host.sh`, then adds this repository's `scripts` directory to
