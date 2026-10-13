@@ -77,6 +77,53 @@ Jobs that never source these files do not load the settings automatically.
 addition of `CONDA_PREFIX/lib` to `LD_LIBRARY_PATH` is not an activation hook;
 it does not remove old prefixes when environments change.
 
+### Generate a PBS script
+
+On the target TORQUE login node, with Python 3 available (standard library only):
+
+```bash
+mkjob 'python run_mcmc.py test1.out' -q mini -n mcmc_test1 \
+    -t 10:00:00 -d "$PWD" -c fastnc -s setup.sh \
+    --mpi --omp '>=2,<=4' --opt
+```
+
+Saves `mcmc_test1.pbs` without running/submitting the job or overwriting files.
+`qstat -Qf` supplies the queue CPU limit; `pbsnodes -a` supplies node capacities.
+Defaults maximize ppn, then nodes. `--opt` chooses nodes and ppn together to use
+free CPU slots within queue limits; it may use more nodes with fewer CPUs each.
+It does not guarantee immediate start. Explicit
+counts/ranges stay fixed. Quote OMP ranges; `=>`/`=<` also work. MPI uses Open MPI;
+OMP alone stays on one node. See `mkjob --help` for options and selection rules.
+Optional `private/queues.csv` stores `server,queue,max_ppn,max_nodes,max_cpus`.
+`WORK_HOST` from `host.sh` selects the server; blank cells, missing rows or a missing
+default file use PBS values. Configured limits can only lower live PBS limits.
+`max_ppn` caps per-node capacity; all occupied slots are subtracted from that cap.
+Explicit requests exceeding limits are rejected. See the private README for values.
+Jobs load `.bashrc`, enter `-d`, activate `-c`, source `-s FILE`, then run the
+command. Logs use PBS defaults. Currently only TORQUE/PBS is supported;
+Slurm support is planned. The old `make-pbs` command is removed. No automatic
+submission is provided.
+The template is `scripts/templates/mkjob.pbs.sh.tmpl`; no PATH changes are needed.
+It uses Python format fields; literal Bash braces are written as `{{` and `}}`.
+
+`mkjob` also exposes `BatchJob` for interactive Python on the target login node:
+
+```python
+from pathlib import Path
+from runpy import run_path
+BatchJob = run_path(str(Path.home() / "dotfiles/scripts/mkjob"))["BatchJob"]
+job = BatchJob("python run_mcmc.py test1.out", queue="mini", name="mcmc_test1",
+               walltime="10:00:00", conda="fastnc", mpi="auto", omp=">=2,<=4", opt=True)
+resources = job.read_resources()
+allocation = job.plan(resources)  # nodes, ppn, MPI ranks, OMP threads
+script = job.render(resources)
+job.write(resources=resources)
+```
+
+`job.render()` and `job.write()` can also query and allocate automatically.
+Explicit snapshots let you inspect and reuse one result; they become stale over time.
+Rendering always recalculates the allocation from the job settings and snapshot.
+
 ## Existing installations
 
 Keep the current shell open, update the checkout, and run the same setup commands.
@@ -98,9 +145,13 @@ preference to `iterm2plist/`; setup does not change that application preference.
 ```bash
 bash tests/test-init.sh
 bash tests/test-host-config.sh
+bash tests/test-mkjob-execution.sh
+bash tests/test-mkjob.sh
+python3 tests/test-mkjob-api.py
 ```
 
 Tests use temporary fixtures without changing your home settings or activating
 real environments. They cover conflicts, link migration, interrupted recovery,
-and conda/mamba startup. `Killed: 9` messages are expected in forced-interruption
-tests. Actual server startup still needs a check in a new session.
+conda/mamba startup, and job generation through the CLI and Python API.
+`Killed: 9` messages are expected in forced-interruption tests. Actual server
+startup still needs a check in a new session.

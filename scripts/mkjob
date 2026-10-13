@@ -1,0 +1,452 @@
+#!/usr/bin/env python3
+"""Generate a TORQUE PBS script; never submit or execute the requested job."""
+
+import argparse
+import csv
+import os
+from pathlib import Path
+import re
+import shlex
+import subprocess
+import sys
+
+QUEUE_FILE = Path(__file__).resolve().parent.parent / "private" / "queues.csv"
+
+
+def positive_int(value):
+    if not re.fullmatch(r"[1-9][0-9]{0,8}", value):
+        raise ValueError(f"expected a positive integer (at most 9 digits): {value!r}")
+    return int(value)
+
+
+def read_queue_limits(queue, path=None):
+    """Read optional local caps for WORK_HOST and queue; never infer the host."""
+    path = Path(path) if path is not None else QUEUE_FILE
+    try:
+        source = path.open(newline="", encoding="utf-8")
+    except FileNotFoundError:
+        if path == QUEUE_FILE:
+            return {}
+        raise
+    with source:
+        reader = csv.DictReader(source)
+        if reader.fieldnames != ["server", "queue", "max_ppn", "max_nodes", "max_cpus"]:
+            raise ValueError(f"invalid queue settings header: {path}")
+        limits = {}
+        seen = set()
+        for row in reader:
+            if None in row or None in row.values():
+                raise ValueError(f"invalid queue settings row: {path}:{reader.line_num}")
+            row = {key: value.strip() for key, value in row.items()}
+            key = (row["server"], row["queue"])
+            if not all(key) or key in seen:
+                raise ValueError(f"empty or duplicate server/queue: {path}:{reader.line_num}")
+            seen.add(key)
+            values = {name: positive_int(row[name]) for name in
+                      ("max_ppn", "max_nodes", "max_cpus") if row[name]}
+            if key == (os.environ.get("WORK_HOST"), queue):
+                limits = values
+        if seen and not os.environ.get("WORK_HOST"):
+            raise ValueError("set WORK_HOST in host.sh to select queue settings")
+        return limits
+
+
+def query(*command):
+    try:
+        return subprocess.check_output(command, universal_newlines=True)
+    except (OSError, subprocess.CalledProcessError) as error:
+        target = "queue " + command[-1] if command[0] == "qstat" else "nodes"
+        raise ValueError(f"could not read {target} using {command[0]}: {error}") from error
+
+
+def records(text):
+    """Read qstat/pbsnodes records, including indented continuation lines."""
+    result = {}
+    fields = None
+    key = None
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        if not line[0].isspace():
+            name = re.sub(r"^Queue:", "", line).strip()
+            if name in result:
+                raise ValueError("duplicate scheduler record: " + name)
+            fields = result[name] = {}
+            key = None
+        elif fields is None:
+            raise ValueError("scheduler attribute without a record")
+        elif re.match(r"\s*\S+\s+=", line):
+            key, value = line.strip().split("=", 1)
+            key = key.strip()
+            if key in fields:
+                raise ValueError("duplicate scheduler attribute: " + key)
+            fields[key] = value.strip()
+        elif key is not None:
+            fields[key] += line.strip()
+        else:
+            raise ValueError("unrecognized scheduler output: " + line)
+    return result
+
+
+def queue_properties(queue):
+    properties = []
+    for key in ("resources_default.nodes", "resources_default.neednodes"):
+        for field in queue.get(key, "").split(":"):
+            if not field or re.fullmatch(r"(?:ppn=)?[0-9]+", field):
+                continue
+            if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_.-]*", field):
+                raise ValueError(f"unsupported {key}: {queue[key]}")
+            if field not in properties:
+                properties.append(field)
+    return properties
+
+
+def read_pbs_nodes(node_info, properties):
+    """Select eligible nodes and read their capacities, without counting jobs."""
+    nodes = []
+    for name, node in records(node_info).items():
+        states = set(node.get("state", "").replace(" ", "").split(","))
+        if states & {"offline", "down", "unknown", "reserve"}:
+            continue
+        labels = set(node.get("properties", "").replace(" ", "").split(",")) | {name}
+        if not set(properties) <= labels:
+            continue
+        total = positive_int(node.get("np", ""))
+        if total > 999999 or "" in states:
+            raise ValueError("invalid node record: " + name)
+        nodes.append(dict(name=name, total=total, states=states, jobs=node.get("jobs", "")))
+    if not nodes:
+        raise ValueError("no eligible nodes found")
+    return nodes
+
+
+def omp_bounds(value, max_ppn):
+    if value is None:
+        return 1, 1
+    if value == "auto":
+        return 1, max_ppn
+    if re.fullmatch(r"[1-9][0-9]{0,8}", value):
+        lower = upper = int(value)
+    else:
+        value = value.replace(" ", "").replace("=>", ">=").replace("=<", "<=")
+        lower, upper = 1, max_ppn
+        terms = value.split(",")
+        if len(terms) > 2:
+            raise ValueError("OMP range supports at most two bounds")
+        for term in terms:
+            match = re.fullmatch(r"(>=|<=|>|<)([1-9][0-9]{0,8})", term)
+            if not match:
+                raise ValueError("invalid OMP bound: " + repr(term))
+            operator, number = match.groups()
+            number = int(number)
+            if operator in (">", ">="):
+                lower = max(lower, number + (operator == ">"))
+            else:
+                upper = min(upper, number - (operator == "<"))
+    upper = min(upper, max_ppn)
+    if lower > upper:
+        raise ValueError("OMP range is empty or cannot fit a node")
+    return lower, upper
+
+
+class BatchJob:
+    """A TORQUE job specification. Methods return snapshots/results, not hidden state.
+
+    command: Bash source string, or a sequence of literal command arguments.
+    mpi/omp: None disables it; "auto" requests automatic sizing.
+    queue_file: optional override for private/queues.csv, selected by WORK_HOST.
+    Constructing a BatchJob validates inputs but does not contact the scheduler.
+    """
+
+    def __init__(self, command, *, queue, name="job", walltime=None, directory=None,
+                 conda=None, setup=None, nodes=None, ppn=None, mpi=None, omp=None,
+                 opt=False, queue_file=None):
+        if isinstance(command, str):
+            if not command:
+                raise ValueError("command must not be empty")
+            subprocess.run(["/bin/bash", "-n", "-c", command], check=True)
+            command = ["/bin/bash", "-e", "-c", command]
+        else:
+            command = list(command)
+        if not command or not command[0] or not all(isinstance(arg, str) for arg in command):
+            raise ValueError("command requires a nonempty executable and string arguments")
+        for value, pattern, label in (
+            (queue, r"[a-zA-Z0-9_][a-zA-Z0-9_.-]*", "queue"),
+            (name, r"[a-zA-Z][a-zA-Z0-9_.-]*", "job name"),
+        ):
+            if not re.fullmatch(pattern, value):
+                raise ValueError("invalid " + label)
+        nodes = positive_int(str(nodes)) if nodes is not None else None
+        ppn = positive_int(str(ppn)) if ppn is not None else None
+        limits = read_queue_limits(queue, queue_file)
+        max_ppn = limits.get("max_ppn")
+        if ppn is not None and max_ppn is not None and ppn > max_ppn:
+            raise ValueError(f"ppn={ppn} exceeds per-node capacity cap {max_ppn}")
+        if mpi not in (None, "auto"):
+            mpi = positive_int(str(mpi))
+        omp = str(omp) if omp is not None else None
+        if mpi == omp == "auto":
+            raise ValueError("specify an MPI count or an OMP count/range")
+        if omp is not None and mpi is None:
+            if nodes not in (None, 1):
+                raise ValueError("OMP without MPI requires one node")
+            nodes = 1
+        for option, value in (("directory", directory), ("conda", conda), ("setup", setup)):
+            if value == "":
+                raise ValueError(f"--{option} must not be empty")
+        directory = Path(directory if directory is not None else os.getcwd()).resolve(strict=True)
+        if not directory.is_dir() or not os.access(directory, os.X_OK):
+            raise ValueError("directory is not accessible")
+        if setup is not None:
+            setup = Path(setup).absolute()
+            if not setup.is_file() or not os.access(setup, os.R_OK):
+                raise ValueError("setup must be a readable file")
+        self.command = command
+        self.queue = queue
+        self.name = name
+        self.walltime = walltime
+        self.directory = directory
+        self.conda = conda
+        self.setup = setup
+        self.nodes = nodes
+        self.ppn = ppn
+        self.max_ppn = max_ppn
+        self.limits = limits
+        self.mpi = mpi
+        self.omp = omp
+        self.opt = opt
+
+    def read_resources(self):
+        """Query and validate queue limits and node capacities once per generation."""
+        queue = records(query("qstat", "-Qf", self.queue)).get(self.queue, {})
+        cpu_limit = positive_int(queue.get("resources_max.ncpus", ""))
+        cpu_limit = min(cpu_limit, self.limits.get("max_cpus", cpu_limit))
+        for key in ("enabled", "started"):
+            if queue.get(key, "True") != "True":
+                raise ValueError(f"queue {self.queue}: {key} is not True")
+        walltime = self.walltime if self.walltime is not None else queue.get("resources_default.walltime", "")
+        if not re.fullmatch(r"[0-9]+:[0-5][0-9]:[0-5][0-9]", walltime) or not re.search(r"[1-9]", walltime):
+            raise ValueError("time must be positive HH:MM:SS (hours may exceed 24)")
+        node_limit = min(cpu_limit, self.limits.get("max_nodes", cpu_limit))
+        for key in ("resources_max.nodect", "resources_max.nodes"):
+            if key in queue:
+                node_limit = min(node_limit, positive_int(queue[key]))
+        if self.nodes and self.ppn and self.nodes * self.ppn > cpu_limit:
+            raise ValueError(f"queue {self.queue}: nodes={self.nodes} * ppn={self.ppn} exceeds CPU limit {cpu_limit}")
+        properties = queue_properties(queue)
+        nodes = read_pbs_nodes(query("pbsnodes", "-a"), properties)
+        return dict(walltime=walltime, cpu_limit=cpu_limit, node_limit=node_limit, properties=properties, nodes=nodes)
+
+    def count_free_slots(self, node):
+        """Count unallocated slots in the fetched snapshot, without querying again."""
+        name, total = node["name"], node["total"]
+        # TORQUE may report 0-8,12-30/job and repeat slots. Count allocations,
+        # not load averages: a node marked 'free' may still have running jobs.
+        occupied = set()
+        for job in node["jobs"].replace(" ", "").split(","):
+            if not job:
+                continue
+            slot = job.split("/", 1)[0]
+            if not re.fullmatch(r"[0-9]+(?:-[0-9]+)?", slot):
+                raise ValueError(f"invalid slot range on {name}: {slot}")
+            ends = slot.split("-")
+            first, last = int(ends[0]), int(ends[-1])
+            if not 0 <= first <= last < total:
+                raise ValueError("slot range outside node capacity: " + name)
+            occupied.update(range(first, last + 1))
+        # Count all occupied slots before applying the local capacity cap:
+        # slots above the cap may still compete for the same physical cores.
+        capacity = min(total, self.max_ppn or total)
+        return max(0, capacity - len(occupied)) if node["states"] <= {"free", "job-sharing"} else 0
+
+    def select_resources(self, capacities, cpu_limit, node_limit):
+        """Choose the normal nodes/ppn request from total capacities and limits."""
+        totals = sorted((total for total, free in capacities), reverse=True)
+        base_nodes = self.nodes or 1
+        if base_nodes > min(node_limit, len(totals)):
+            raise ValueError("requested nodes exceeds queue limit or eligible node count")
+        # The Nth-largest node gives the largest uniform ppn that fits N nodes.
+        max_ppn = min(totals[base_nodes - 1], cpu_limit // base_nodes)
+        base_ppn = self.ppn or max_ppn
+        if not 1 <= base_ppn <= max_ppn:
+            raise ValueError("ppn/nodes cannot fit eligible nodes and queue CPU limit")
+        if self.nodes is None:
+            base_nodes = min(cpu_limit // base_ppn, node_limit,
+                             sum(total >= base_ppn for total in totals))
+        return base_nodes, base_ppn
+
+    def optimize_resources(self, capacities, max_ppn, cpu_limit, node_limit):
+        """Choose unspecified nodes/ppn jointly within queue and free-slot limits."""
+        bounds = omp_bounds(self.omp, max_ppn)
+        min_ppn = 1 if self.ppn is None else max_ppn
+        candidates = []
+        for ppn in range(max_ppn, min_ppn - 1, -1):
+            available = sum(free >= ppn for total, free in capacities)
+            nodes = min(cpu_limit // ppn, node_limit, available)
+            if self.nodes is not None:
+                if self.nodes > nodes:
+                    continue
+                nodes = self.nodes
+            if nodes:
+                candidates.append((nodes, ppn))
+        return self.allocate_parallelism(candidates, bounds)
+
+    def allocate_parallelism(self, candidates, bounds):
+        """Evaluate MPI/OMP together for each candidate; preserve explicit counts."""
+        lower, upper = bounds
+        best = None
+        best_key = None
+        for nodes, ppn in candidates:
+            for threads in range(lower, min(upper, ppn) + 1):
+                selected_nodes = nodes
+                ranks_per_node = ppn // threads
+                if self.mpi is None:
+                    ranks = 1
+                elif self.mpi == "auto":
+                    ranks = nodes * ranks_per_node
+                else:
+                    ranks = self.mpi
+                    if ranks > nodes * ranks_per_node:
+                        continue
+                    if self.opt and self.nodes is None:
+                        selected_nodes = (ranks + ranks_per_node - 1) // ranks_per_node
+                used = ranks * threads
+                if self.mpi is None and self.omp is None:
+                    used = selected_nodes * ppn
+                # Maximize useful CPUs; break ties by fewer threads, fewer nodes,
+                # then (only with --opt) a smaller allocation to avoid wasting slots.
+                key = (used, -threads, -selected_nodes, -ppn if self.opt else 0)
+                if best_key is None or key > best_key:
+                    best_key = key
+                    best = (selected_nodes, ppn, ranks, threads)
+        if best is None:
+            raise ValueError("no allocation satisfies the requested counts/ranges and current availability")
+        return best
+
+    def plan(self, resources):
+        """Choose nodes, ppn, MPI ranks and OMP threads from one resource snapshot."""
+        cpu_limit = min(resources["cpu_limit"], self.limits.get("max_cpus", resources["cpu_limit"]))
+        node_limit = min(resources["node_limit"], self.limits.get("max_nodes", resources["node_limit"]))
+        capacities = [(min(node["total"], self.max_ppn or node["total"]),
+                       self.count_free_slots(node) if self.opt else 0)
+                      for node in resources["nodes"]]
+        base = self.select_resources(capacities, cpu_limit, node_limit)
+        if self.opt:
+            return self.optimize_resources(capacities, base[1], cpu_limit, node_limit)
+        return self.allocate_parallelism([base], omp_bounds(self.omp, base[1]))
+
+    def render(self, resources=None):
+        """Fill the adjacent PBS template; paths and command arguments are quoted."""
+        if resources is None:
+            resources = self.read_resources()
+        allocation = self.plan(resources)
+        command = self.command
+        properties = resources["properties"]
+        nodes, ppn, ranks, threads = allocation
+        node_request = ":".join([str(nodes)] + properties + ["ppn=" + str(ppn)])
+        initialization = []
+        if self.conda is not None:
+            initialization.append('. "$HOME/.config/bash/envman.sh"')
+            initialization.append(f"conda activate {shlex.quote(self.conda)}")
+        if self.setup is not None:
+            initialization.append(f". {shlex.quote(str(self.setup))}")
+        if self.mpi is not None or self.omp is not None:
+            initialization.append(f"export OMP_NUM_THREADS={threads}")
+        if self.mpi is not None:
+            command = ["mpirun", "-n", str(ranks), "--map-by",
+                       f"ppr:{ppn // threads}:node:PE={threads}"] + command
+        template_path = Path(__file__).resolve().parent / "templates" / "mkjob.pbs.sh.tmpl"
+        return template_path.read_text(encoding="utf-8").format(
+            queue=self.queue, node_request=node_request, walltime=resources["walltime"], name=self.name,
+            directory=shlex.quote(str(self.directory)),
+            initialization="".join(line + "\n" for line in initialization),
+            command=" ".join(map(shlex.quote, command)),
+        )
+
+    def write(self, path=None, *, resources=None):
+        """Generate and save a script without overwriting; return its path."""
+        if path == "":
+            raise ValueError("output must not be empty")
+        path = Path(path if path is not None else self.name + ".pbs")
+        if os.path.lexists(path):
+            raise ValueError("output already exists: " + str(path))
+        script = self.render(resources)
+        with path.open("x", encoding="utf-8") as output:
+            output.write(script)
+        return path
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""Default: largest feasible ppn, then as many nodes as the queue allows.
+--opt chooses unspecified nodes/ppn jointly using currently unallocated CPU slots.
+private/queues.csv optionally caps ppn/nodes/CPUs for WORK_HOST and the queue.
+Explicit counts/ranges stay fixed. Immediate start is not guaranteed.
+OMP ranges: '>=4', '<5', '>=2,<=8'; => and =< are accepted too. Quote ranges.
+MPI+OMP: maximize used CPUs, then fewer OMP threads, then fewer nodes.
+OMP alone uses one node. Bare --mpi --omp needs a count/range for one option.
+MPI uses Open MPI mapping. Without MPI/OMP options, COMMAND runs unchanged.
+Jobs load ~/.bashrc, enter DIR, activate conda, source SETUP_FILE, run COMMAND.
+COMMAND is Bash code interpreted only when the job runs. Alternatively, use
+options followed by -- COMMAND ARG... to preserve literal argument boundaries.
+Requires Python 3 and TORQUE qstat/pbsnodes on the target login node.""",
+    )
+    parser.add_argument("command", nargs="?", help="Bash command, quoted as one argument")
+    parser.add_argument("-q", "--queue", required=True)
+    parser.add_argument("-n", "--name", default="job")
+    parser.add_argument("-t", "--time", "--walltime", dest="walltime", help="HH:MM:SS; default: queue default")
+    parser.add_argument("-d", "--directory", "--workdir", default=os.getcwd())
+    parser.add_argument("-c", "--conda", help="conda environment to activate in the job")
+    parser.add_argument("-s", "--setup", metavar="FILE", help="Bash setup file (relative to the current directory)")
+    parser.add_argument("-o", "--output", help="output filename; default: NAME.pbs; never overwrite")
+    parser.add_argument("--nodes")
+    parser.add_argument("--ppn")
+    parser.add_argument("--mpi", nargs="?", const="auto", metavar="N")
+    parser.add_argument("--omp", nargs="?", const="auto", metavar="N_OR_RANGE")
+    parser.add_argument("--opt", action="store_true")
+
+    arguments = sys.argv[1:]
+    command = []
+    if "--" in arguments:
+        separator = arguments.index("--")
+        command = arguments[separator + 1:]
+        arguments = arguments[:separator]
+    args = parser.parse_args(arguments)
+    if args.command is not None:
+        if command:
+            parser.error("use either a command string or -- COMMAND ARG...")
+        command = args.command
+    options = vars(args).copy()
+    options.pop("command")
+    output = options.pop("output")
+    if output == "":
+        parser.error("--output must not be empty")
+    output = Path(output if output is not None else args.name + ".pbs")
+    if os.path.lexists(output):
+        parser.error("output already exists: " + str(output))
+    return BatchJob(command, **options), output
+
+
+def main():
+    job, output = parse_args()
+    resources = job.read_resources()
+    allocation = job.plan(resources)
+    job.write(output, resources=resources)
+    nodes, ppn, ranks, threads = allocation
+    message = f"Generated {output}: nodes={nodes} ppn={ppn} CPUs={nodes * ppn}/{resources['cpu_limit']}"
+    if job.mpi is not None:
+        message += f" MPI={ranks}"
+    if job.mpi is not None or job.omp is not None:
+        message += f" OMP={threads}"
+    print(message + " (not submitted).")
+    if job.opt:
+        print("Based on current CPU allocations; immediate start is not guaranteed.")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (ValueError, OSError, subprocess.CalledProcessError) as error:
+        sys.exit("mkjob: " + str(error))
