@@ -12,7 +12,9 @@ Shared Bash and application settings for macOS and Linux (Bash 3.2+).
 | `conda-env/`, `iterm2plist/` | Environment definitions and iTerm2 preferences |
 | `tests/` | Setup and shell initialization tests |
 
-Sources are grouped into `batch`, `tex`, `network`, `macos`, `files`, and `git`.
+Command documentation: [batch](scripts/batch/README.md), [tex](scripts/tex/README.md),
+[network](scripts/network/README.md), [macos](scripts/macos/README.md),
+[files](scripts/files/README.md), [git](scripts/git/README.md).
 Keep relative command links in `bin/`; templates and notes stay with their sources.
 After updating from the flat `scripts/` layout, open a new terminal to refresh PATH
 and cached command locations. Existing command names are unchanged.
@@ -68,72 +70,6 @@ an ordered Bash array: the first installed root is used, and `()` skips conda/ma
 initialization. `CONDDIR` and `MINIFORGEDIR` do not select installations.
 An optional `config/bash/interactive.local.sh` holds interactive-only additions.
 Both local files are Git-ignored. Only source trusted Bash files.
-
-## Batch jobs
-
-Non-interactive `.bashrc` loads host settings and the shared command path.
-Initialize conda/mamba separately when needed, then activate the project's
-chosen environment:
-
-```bash
-. "$HOME/.bashrc" || exit
-. "$HOME/.config/bash/envman.sh" || exit
-```
-
-Jobs that never source these files do not load the settings automatically.
-`envman.sh` supports modern and legacy mamba initialization. Its compatibility
-addition of `CONDA_PREFIX/lib` to `LD_LIBRARY_PATH` is not an activation hook;
-it does not remove old prefixes when environments change.
-
-### Generate a PBS script
-
-On the target TORQUE login node, with Python 3 available (standard library only):
-
-```bash
-mkjob 'python run_mcmc.py test1.out' -q mini -n mcmc_test1 \
-    -t 10:00:00 -d "$PWD" -c fastnc -s setup.sh \
-    --mpi --omp '>=2,<=4' --opt
-```
-
-Saves `mcmc_test1.pbs` without running/submitting the job or overwriting files.
-`qstat -Qf` supplies the queue CPU limit; `pbsnodes -a` supplies node capacities.
-Defaults maximize ppn, then nodes. `--opt` chooses nodes and ppn together to use
-free CPU slots within queue limits; it may use more nodes with fewer CPUs each.
-It does not guarantee immediate start. Explicit
-counts/ranges stay fixed. Quote OMP ranges; `=>`/`=<` also work. MPI uses Open MPI;
-OMP alone stays on one node. See `mkjob --help` for options and selection rules.
-`scripts/batch/queues.csv` stores `server,queue,max_ppn,max_nodes,max_cpus`.
-`WORK_HOST` from `host.sh` selects the server; blank cells, missing rows or a missing
-default file use PBS values. Configured limits can only lower live PBS limits.
-`max_ppn` caps per-node capacity; all occupied slots are subtracted from that cap.
-Explicit requests exceeding limits are rejected. The gw rows use a chosen 28-slot
-per-node cap and confirmed queue CPU limits; node-count limits remain blank
-because only defaults were confirmed. Recreate BatchJob objects after editing.
-Jobs load `.bashrc`, enter `-d`, activate `-c`, source `-s FILE`, then run the
-command. Generated jobs do not enable `set -e`; the final command sets the exit
-status. Logs use PBS defaults. Currently only TORQUE/PBS is supported;
-Slurm support is planned. The old `make-pbs` command is removed. No automatic
-submission is provided.
-The template is `scripts/batch/templates/mkjob.pbs.sh.tmpl`; no PATH changes are needed.
-It uses Python format fields; literal Bash braces are written as `{{` and `}}`.
-
-`mkjob` also exposes `BatchJob` for interactive Python on the target login node:
-
-```python
-from pathlib import Path
-from runpy import run_path
-BatchJob = run_path(str(Path.home() / "dotfiles/bin/mkjob"))["BatchJob"]
-job = BatchJob("python run_mcmc.py test1.out", queue="mini", name="mcmc_test1",
-               walltime="10:00:00", conda="fastnc", mpi="auto", omp=">=2,<=4", opt=True)
-resources = job.read_resources()
-allocation = job.plan(resources)  # nodes, ppn, MPI ranks, OMP threads
-script = job.render(resources)
-job.write(resources=resources)
-```
-
-`job.render()` and `job.write()` can also query and allocate automatically.
-Explicit snapshots let you inspect and reuse one result; they become stale over time.
-Rendering always recalculates the allocation from the job settings and snapshot.
 
 ## Existing installations
 
