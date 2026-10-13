@@ -10,7 +10,7 @@ import shlex
 import subprocess
 import sys
 
-QUEUE_FILE = Path(__file__).resolve().parent.parent / "private" / "queues.csv"
+QUEUE_FILE = Path(__file__).resolve().parent / "queues.csv"
 
 
 def positive_int(value):
@@ -154,7 +154,7 @@ class BatchJob:
 
     command: Bash source string, or a sequence of literal command arguments.
     mpi/omp: None disables it; "auto" requests automatic sizing.
-    queue_file: optional override for private/queues.csv, selected by WORK_HOST.
+    queue_file: optional override for scripts/batch/queues.csv, selected by WORK_HOST.
     Constructing a BatchJob validates inputs but does not contact the scheduler.
     """
 
@@ -382,7 +382,7 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""Default: largest feasible ppn, then as many nodes as the queue allows.
 --opt chooses unspecified nodes/ppn jointly using currently unallocated CPU slots.
-private/queues.csv optionally caps ppn/nodes/CPUs for WORK_HOST and the queue.
+scripts/batch/queues.csv optionally caps ppn/nodes/CPUs for WORK_HOST and the queue.
 Explicit counts/ranges stay fixed. Immediate start is not guaranteed.
 OMP ranges: '>=4', '<5', '>=2,<=8'; => and =< are accepted too. Quote ranges.
 MPI+OMP: maximize used CPUs, then fewer OMP threads, then fewer nodes.

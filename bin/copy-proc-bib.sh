@@ -1,0 +1,1 @@
+../scripts/tex/copy-proc-bib.sh

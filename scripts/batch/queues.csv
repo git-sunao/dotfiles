@@ -1,0 +1,9 @@
+server,queue,max_ppn,max_nodes,max_cpus
+gw,gw,28,,
+gw,tiny,28,,1
+gw,mini,28,,28
+gw,mini2,28,,112
+gw,mini50,28,,28
+gw,small,28,,504
+gw,large,28,,1000
+gw,massive_distrib,28,,1

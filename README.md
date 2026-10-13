@@ -6,10 +6,18 @@ Shared Bash and application settings for macOS and Linux (Bash 3.2+).
 | --- | --- |
 | `rc/` | Files linked into the home directory with leading dots |
 | `config/` | Application settings, linked individually under `~/.config/` |
-| `scripts/` | Shared commands |
+| `bin/` | Relative links to commands; added to PATH |
+| `scripts/` | Command sources grouped by purpose |
 | `private/` | Independent `dotfiles-private` repository; Git-ignored here |
 | `conda-env/`, `iterm2plist/` | Environment definitions and iTerm2 preferences |
 | `tests/` | Setup and shell initialization tests |
+
+Sources are grouped into `batch`, `tex`, `network`, `macos`, `files`, and `git`.
+Keep relative command links in `bin/`; templates and notes stay with their sources.
+After updating from the flat `scripts/` layout, open a new terminal to refresh PATH
+and cached command locations. Existing command names are unchanged.
+Git-ignored personal scripts and their links remain local; migrate these separately
+on other machines that use them.
 
 ## Setup
 
@@ -94,17 +102,19 @@ free CPU slots within queue limits; it may use more nodes with fewer CPUs each.
 It does not guarantee immediate start. Explicit
 counts/ranges stay fixed. Quote OMP ranges; `=>`/`=<` also work. MPI uses Open MPI;
 OMP alone stays on one node. See `mkjob --help` for options and selection rules.
-Optional `private/queues.csv` stores `server,queue,max_ppn,max_nodes,max_cpus`.
+`scripts/batch/queues.csv` stores `server,queue,max_ppn,max_nodes,max_cpus`.
 `WORK_HOST` from `host.sh` selects the server; blank cells, missing rows or a missing
 default file use PBS values. Configured limits can only lower live PBS limits.
 `max_ppn` caps per-node capacity; all occupied slots are subtracted from that cap.
-Explicit requests exceeding limits are rejected. See the private README for values.
+Explicit requests exceeding limits are rejected. The gw rows use a chosen 28-slot
+per-node cap and confirmed queue CPU limits; node-count limits remain blank
+because only defaults were confirmed. Recreate BatchJob objects after editing.
 Jobs load `.bashrc`, enter `-d`, activate `-c`, source `-s FILE`, then run the
 command. Generated jobs do not enable `set -e`; the final command sets the exit
 status. Logs use PBS defaults. Currently only TORQUE/PBS is supported;
 Slurm support is planned. The old `make-pbs` command is removed. No automatic
 submission is provided.
-The template is `scripts/templates/mkjob.pbs.sh.tmpl`; no PATH changes are needed.
+The template is `scripts/batch/templates/mkjob.pbs.sh.tmpl`; no PATH changes are needed.
 It uses Python format fields; literal Bash braces are written as `{{` and `}}`.
 
 `mkjob` also exposes `BatchJob` for interactive Python on the target login node:
@@ -112,7 +122,7 @@ It uses Python format fields; literal Bash braces are written as `{{` and `}}`.
 ```python
 from pathlib import Path
 from runpy import run_path
-BatchJob = run_path(str(Path.home() / "dotfiles/scripts/mkjob"))["BatchJob"]
+BatchJob = run_path(str(Path.home() / "dotfiles/bin/mkjob"))["BatchJob"]
 job = BatchJob("python run_mcmc.py test1.out", queue="mini", name="mcmc_test1",
                walltime="10:00:00", conda="fastnc", mpi="auto", omp=">=2,<=4", opt=True)
 resources = job.read_resources()
@@ -146,6 +156,7 @@ preference to `iterm2plist/`; setup does not change that application preference.
 ```bash
 bash tests/test-init.sh
 bash tests/test-host-config.sh
+bash tests/test-script-links.sh
 bash tests/test-mkjob-execution.sh
 bash tests/test-mkjob.sh
 python3 tests/test-mkjob-api.py

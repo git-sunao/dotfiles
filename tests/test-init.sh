@@ -7,7 +7,7 @@ trap 'rm -rf -- "$test_root"' EXIT
 fixture_repo="$test_root/repo with spaces"
 test_home="$test_root/home with spaces"
 apps=(alacritty bash git htop iterm2 matplotlib nvim)
-mkdir -p "$fixture_repo/rc" "$fixture_repo/scripts" "$test_home"
+mkdir -p "$fixture_repo/rc" "$fixture_repo/bin" "$test_home"
 for app in "${apps[@]}"; do mkdir -p "$fixture_repo/config/$app"; done
 # Substitute only HOME references; the real home is never an installation target.
 sed -e 's/\${HOME/\${TEST_HOME/g' -e 's/\$HOME/\$TEST_HOME/g' \
@@ -154,14 +154,19 @@ printf 'PASS: repeated runs, relative links, spaces, unrelated apps, and login p
 # Exercise real startup through the per-app symlink, without real conda or HOME changes.
 sed 's|\$HOME|$TEST_HOME|g' "$repo_dir/rc/bashrc" > "$fixture_repo/rc/bashrc"
 printf 'export WORK_HOST=fixture\nCONDA_ROOTS=()\n' > "$fixture_repo/config/bash/host.sh"
+mkdir -p "$fixture_repo/scripts/example"
+printf '#!/bin/bash\nprintf "linked command\\n"\n' > "$fixture_repo/scripts/example/check-link"
+chmod +x "$fixture_repo/scripts/example/check-link"
+ln -s ../scripts/example/check-link "$fixture_repo/bin/check-link"
 /usr/bin/env -i PATH=/usr/bin:/bin TEST_HOME="$test_home" FIXTURE_REPO="$fixture_repo" \
     /bin/bash --noprofile --norc -ec '
         . "$TEST_HOME/.bashrc"
         [ "$WORK_HOST" = fixture ]
-        expected=$(cd -P "$FIXTURE_REPO/scripts" && pwd)
+        expected=$(cd -P "$FIXTURE_REPO/bin" && pwd)
         [ "$PATH" = "$expected:/usr/bin:/bin" ]
         . "$TEST_HOME/.bashrc"
         [ "$PATH" = "$expected:/usr/bin:/bin" ]
+        [ "$(check-link)" = "linked command" ]
     '
 printf 'PASS: host settings and repository commands resolve through application links\n'
 

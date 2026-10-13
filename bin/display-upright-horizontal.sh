@@ -1,0 +1,1 @@
+../scripts/macos/display-upright-horizontal.sh

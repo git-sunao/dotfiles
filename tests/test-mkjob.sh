@@ -2,7 +2,7 @@
 set -eu
 export WORK_HOST=fixture
 repo=$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-mkjob="$repo/scripts/mkjob"
+mkjob="$repo/bin/mkjob"
 fixture=$(mktemp -d "${TMPDIR:-/tmp}/mkjob-test.XXXXXX")
 fixture=$(cd -P -- "$fixture" && pwd)
 trap 'rm -rf -- "$fixture"' EXIT
@@ -273,7 +273,7 @@ printf 'PASS: deferred command/conda/setup, Open MPI arguments, runtime failures
 # outside the repository. A missing template must not leave a partial output.
 mkdir -p "$fixture/installed/templates"
 cp "$mkjob" "$fixture/installed/mkjob"
-cp "$repo/scripts/templates/mkjob.pbs.sh.tmpl" "$fixture/installed/templates/"
+cp "$repo/scripts/batch/templates/mkjob.pbs.sh.tmpl" "$fixture/installed/templates/"
 printf '# external template marker\n' >> "$fixture/installed/templates/mkjob.pbs.sh.tmpl"
 ln -s "$fixture/installed/mkjob" "$fixture/bin/mkjob"
 ( cd "$fixture/work space"; mkjob 'printf "%s" "{queue}"' -q sample -n external_template > "$fixture/result" )
@@ -292,10 +292,9 @@ printf 'PASS: external template, symlink/cwd independence, literal braces and mi
 queue 112
 : > "$fixture/nodes"
 node a free 56; node b free 56; node c free 28; node d free 28
-mkdir -p "$fixture/private"
-cp "$repo/scripts/templates/mkjob.pbs.sh.tmpl" "$fixture/installed/templates/"
+cp "$repo/scripts/batch/templates/mkjob.pbs.sh.tmpl" "$fixture/installed/templates/"
 mkjob="$fixture/installed/mkjob"
-printf 'server,queue,max_ppn,max_nodes,max_cpus\nfixture,sample,28,,\n' > "$fixture/private/queues.csv"
+printf 'server,queue,max_ppn,max_nodes,max_cpus\nfixture,sample,28,,\n' > "$fixture/installed/queues.csv"
 generate true --mpi
 allocation 4 28; parallelism 112 1 28
 generate true --mpi --omp 4 --opt
@@ -306,7 +305,7 @@ generate true --mpi --opt
 allocation 1 8
 : > "$fixture/nodes"; node a free 56 '0-27/1.server'
 reject true --mpi --opt
-printf 'server,queue,max_ppn,max_nodes,max_cpus\n' > "$fixture/private/queues.csv"
+printf 'server,queue,max_ppn,max_nodes,max_cpus\n' > "$fixture/installed/queues.csv"
 generate true --mpi --opt
 allocation 1 28
 printf 'PASS: host capacity cap, hybrid allocation, occupied high slots and uncapped fallback\n'

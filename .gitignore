@@ -1,6 +1,10 @@
 
 scripts/cisco2ipmu
+scripts/network/cisco2ipmu
+bin/cisco2ipmu
 scripts/sshproxy.sh
+scripts/network/sshproxy.sh
+bin/sshproxy.sh
 config/nvim/plugin/
 
 .DS_Store
@@ -15,7 +19,11 @@ config/bash/host.local
 config/bash/interactive.local.sh
 config/github-copilot/
 scripts/ciscopass
+scripts/network/ciscopass
+bin/ciscopass
 scripts/cisco2ipmu-man
+scripts/network/cisco2ipmu-man
+bin/cisco2ipmu-man
 .bashrc_bak
 config/git/gitk
 

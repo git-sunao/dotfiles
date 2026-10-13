@@ -2,7 +2,7 @@
 set -eu
 export WORK_HOST=fixture
 repo_dir=$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-mkjob="$repo_dir/scripts/mkjob"
+mkjob="$repo_dir/bin/mkjob"
 test_root=$(mktemp -d "${TMPDIR:-/tmp}/mkjob-execution-test.XXXXXX")
 test_root=$(cd -P -- "$test_root" && pwd)
 trap 'rm -rf -- "$test_root"' EXIT

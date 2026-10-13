@@ -1,0 +1,1 @@
+../scripts/macos/display-right-vertical.sh

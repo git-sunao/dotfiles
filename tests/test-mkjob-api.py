@@ -8,8 +8,8 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
-SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
-mkjob = runpy.run_path(str(SCRIPTS / "mkjob"))
+BIN = Path(__file__).resolve().parents[1] / "bin"
+mkjob = runpy.run_path(str(BIN / "mkjob"))
 BatchJob = mkjob["BatchJob"]
 
 QUEUE = """Queue: sample
