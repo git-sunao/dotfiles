@@ -26,6 +26,39 @@ b
     jobs = 0-1/two
 """
 
+PBS_NODES = """a52
+    state = free
+    resources_available.host = a52
+    resources_available.host_group = GroupA
+    resources_available.ncpus = 52
+    resources_assigned.ncpus = 46
+    jobs = 123.server/51, 123.server/51
+    sharing = default_shared
+a48
+    state = free
+    resources_available.host = a48
+    resources_available.host_group = GroupA
+    resources_available.ncpus = 48
+    resources_assigned.ncpus = 32
+    sharing = default_shared
+b56
+    state = free
+    resources_available.host = b56
+    resources_available.host_group = GroupB
+    resources_available.ncpus = 56
+    resources_assigned.ncpus = 35
+    sharing = default_shared
+b56busy
+    state = job-busy
+    resources_available.host = b56busy
+    resources_available.host_group = GroupB
+    resources_available.ncpus = 56
+    resources_assigned.ncpus = 56
+    sharing = default_shared
+offline
+    state = state-unknown,offline
+"""
+
 
 class BatchJobTests(unittest.TestCase):
     def setUp(self):
@@ -234,6 +267,89 @@ class BatchJobTests(unittest.TestCase):
             with self.subTest(options=options), self.assertRaises(ValueError):
                 BatchJob(["true"], queue="sample", **options).plan(resources)
 
+    def test_pbs_groups_capacities_and_native_requests(self):
+        for group, limit, max_nodes, names, normal, optimized in (
+            ('GroupA', 52, 1, ['a52', 'a48'], (1, 52, 52, 1), (1, 16, 16, 1)),
+            ('GroupB', 56, 2, ['b56', 'b56busy'], (1, 56, 56, 1), (1, 21, 21, 1)),
+        ):
+            queue = (f'Queue: sample\n    resources_max.ncpus = {limit}\n'
+                     f'    resources_max.nodect = {max_nodes}\n'
+                     f'    default_chunk.host_group = {group}\n')
+            with self.subTest(group=group), patch.dict(
+                    BatchJob.read_resources.__globals__, query=Mock(side_effect=[queue, PBS_NODES])):
+                job = BatchJob(['hostname'], queue='sample', walltime='00:10:00', mpi='auto')
+                resources = job.read_resources()
+            self.assertEqual([n['name'] for n in resources['nodes']], names)
+            self.assertEqual(job.plan(resources), normal)
+            self.assertIn(f'#PBS -l select=1:ncpus={limit}:mpiprocs={limit}:ompthreads=1'
+                          f':host_group={group},place=scatter', job.render(resources))
+            job.opt = True
+            self.assertEqual(job.plan(resources), optimized)
+            job.opt, job.nodes, job.ppn, job.mpi, job.omp = False, 1, 8, 4, '2'
+            script = job.render(resources)
+            self.assertIn('select=1:ncpus=8:mpiprocs=4:ompthreads=2', script)
+            self.assertIn('mpirun -n 4 --map-by ppr:4:node:PE=2', script)
+            job.mpi = None
+            self.assertIn('select=1:ncpus=8:mpiprocs=1:ompthreads=2', job.render(resources))
+            if group == 'GroupB':
+                job.nodes, job.ppn, job.mpi, job.omp = 2, None, 'auto', None
+                self.assertEqual(job.plan(resources), (2, 28, 56, 1))
+                self.assertIn('select=2:ncpus=28:mpiprocs=28:ompthreads=1', job.render(resources))
+            job.nodes = max_nodes + 1
+            with self.assertRaises(ValueError):
+                job.plan(resources)
+
+    def test_pbs_assigned_cpus_and_exclusive_nodes(self):
+        job = BatchJob(['hostname'], queue='sample', opt=True)
+        nodes = mkjob['read_pbs_nodes'](PBS_NODES, [], 'GroupA')
+        self.assertEqual([job.count_free_slots(n) for n in nodes], [6, 16])
+        node = nodes[0]
+        for assigned in ('', '-1', 'bad', '1.5', '53'):
+            node['assigned'] = assigned
+            with self.subTest(assigned=assigned), self.assertRaises(ValueError):
+                job.count_free_slots(node)
+        node['assigned'] = '46'
+        for state in ('job-busy', 'job-exclusive', 'resv-exclusive'):
+            node['states'] = {state}
+            self.assertEqual(job.count_free_slots(node), 0)
+        node['states'], node['sharing'] = {'free'}, 'force_excl'
+        self.assertEqual(job.count_free_slots(node), 0)
+        node['assigned'] = '0'
+        self.assertEqual(job.count_free_slots(node), 52)
+        job.max_ppn = 28
+        node['assigned'], node['sharing'] = '30', 'default_shared'
+        self.assertEqual(job.count_free_slots(node), 0)
+
+    def test_pbs_unsupported_nodes(self):
+        reader = mkjob['read_pbs_nodes']
+        for group in ('missing', 'GroupA,GroupB', 'GroupA\n#PBS -V'):
+            with self.subTest(group=group), self.assertRaises(ValueError):
+                reader(PBS_NODES, [], group)
+        with self.assertRaisesRegex(ValueError, 'multiple eligible vnodes'):
+            reader(PBS_NODES.replace('host = a48', 'host = a52'), [], 'GroupA')
+        queue = 'Queue: sample\n    resources_max.ncpus = 20\n'
+        with patch.dict(BatchJob.read_resources.__globals__, query=Mock(side_effect=[queue, PBS_NODES + NODES])):
+            with self.assertRaisesRegex(ValueError, 'mixed PBS node formats'):
+                BatchJob(['hostname'], queue='sample', walltime='00:10:00').read_resources()
+
+    def test_gfarm_torque_capacity_and_free_slots(self):
+        queue = ('Queue: sample\n    resources_max.ncpus = 120\n'
+                 '    resources_max.nodect = 6\n')
+        nodes = ''.join(f'n{i}\n    state = free\n    np = 20\n' for i in range(6))
+        nodes += ('busy\n    state = job-exclusive\n    np = 20\n'
+                  '    jobs = 0/123[1].server, 1/123[1].server\n'
+                  'bad\n    state = down,offline\n    np = 1\n')
+        with patch.dict(BatchJob.read_resources.__globals__, query=Mock(side_effect=[queue, nodes])):
+            job = BatchJob(['hostname'], queue='sample', mpi='auto', walltime='00:10:00')
+            resources = job.read_resources()
+        for opt in (False, True):
+            job.opt = opt
+            self.assertEqual(job.plan(resources), (6, 20, 120, 1))
+            self.assertIn('#PBS -l nodes=6:ppn=20', job.render(resources))
+        job.nodes = 7
+        with self.assertRaises(ValueError):
+            job.plan(resources)
+
     def test_interactive_workflow(self):
         query = Mock(side_effect=[QUEUE, NODES])
         with tempfile.TemporaryDirectory() as directory, patch.dict(
@@ -279,17 +395,52 @@ class BatchJobTests(unittest.TestCase):
                 job.write(path, resources=resources)
             self.assertFalse(path.exists())
 
-    def test_convenience_methods_refresh_defaults(self):
+    def test_convenience_methods_leave_walltime_defaults_to_pbs(self):
         later_queue = QUEUE.replace("01:00:00", "02:00:00")
         query = Mock(side_effect=[QUEUE, NODES, later_queue, NODES])
         with tempfile.TemporaryDirectory() as directory, patch.dict(
                 BatchJob.read_resources.__globals__, query=query):
             job = BatchJob(["true"], queue="sample", directory=directory)
-            self.assertIn("walltime=01:00:00", job.render())
+            self.assertNotIn("#PBS -l walltime=", job.render())
             path = job.write(Path(directory) / "later.pbs")
-            self.assertIn("walltime=02:00:00", path.read_text())
+            self.assertNotIn("#PBS -l walltime=", path.read_text())
             self.assertIsNone(job.walltime)
             self.assertEqual(query.call_count, 4)
+
+    def test_walltime_formats_and_omission(self):
+        cases = (
+            ('00:00:01', '00:00:01', '00:00:01'),
+            ('23:59:59', '23:59:59', '23:59:59'),
+            ('24:00:00', '1:00:00:00', '24:00:00'),
+            ('7:00:00:00', '7:00:00:00', '168:00:00'),
+            ('168:00:00', '7:00:00:00', '168:00:00'),
+            ('2:03:04:05', '2:03:04:05', '51:04:05'),
+            ('51:04:05', '2:03:04:05', '51:04:05'),
+            ('0:01:02:03', '01:02:03', '01:02:03'),
+            (None, None, None),
+        )
+        for node_text, pbs_select in ((NODES, False), (PBS_NODES, True)):
+            for value, torque, pbs in cases:
+                with self.subTest(value=value, pbs_select=pbs_select), patch.dict(
+                        BatchJob.read_resources.__globals__, query=Mock(side_effect=[QUEUE, node_text])):
+                    job = BatchJob(['hostname'], queue='sample', walltime=value)
+                    resources = job.read_resources()
+                    expected = pbs if pbs_select else torque
+                    self.assertEqual(resources['walltime'], expected)
+                    script = job.render(resources)
+                    if expected is None:
+                        self.assertNotIn('#PBS -l walltime=', script)
+                    else:
+                        self.assertIn(f'#PBS -l walltime={expected}\n#PBS -N job', script)
+                    self.assertEqual(job.walltime, value)
+            no_default = QUEUE.replace('    resources_default.walltime = 01:00:00\n', '')
+            with patch.dict(BatchJob.read_resources.__globals__, query=Mock(side_effect=[no_default, node_text])):
+                self.assertNotIn('#PBS -l walltime=', BatchJob(['hostname'], queue='sample').render())
+        for value in ('', '00:00:00', '0:00:00:00', '1:24:00:00', '-1:00:00:00',
+                      '01:60:00', '1:00:00:60', '1:00', '1:2:03', '1:00:00:00:00',
+                      '1:00:00\n#PBS -V'):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                mkjob['format_walltime'](value)
 
     def test_api_validation_and_instance_isolation(self):
         for options in (dict(nodes=0), dict(ppn=-1), dict(mpi="auto", omp="auto"),

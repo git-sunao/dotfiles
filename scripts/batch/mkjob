@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate a TORQUE PBS script; never submit or execute the requested job."""
+"""Generate a PBS script (TORQUE or PBS Professional/OpenPBS); never submit it."""
 
 import argparse
 import csv
@@ -17,6 +17,26 @@ def positive_int(value):
     if not re.fullmatch(r"[1-9][0-9]{0,8}", value):
         raise ValueError(f"expected a positive integer (at most 9 digits): {value!r}")
     return int(value)
+
+
+def format_walltime(value, pbs_select=False):
+    """Accept elapsed days or hours; PBS Professional requires hours-only output."""
+    if value is None:
+        return None
+    if not re.fullmatch(r"(?:[0-9]+:)?[0-9]+:[0-5][0-9]:[0-5][0-9]", value):
+        raise ValueError("time must be positive HH:MM:SS or D:HH:MM:SS")
+    parts = list(map(int, value.split(":")))
+    hours, minutes, seconds = parts[-3:]
+    if len(parts) == 4:
+        if hours >= 24:
+            raise ValueError("hours in D:HH:MM:SS must be between 0 and 23")
+        hours += 24 * parts[0]
+    if hours == minutes == seconds == 0:
+        raise ValueError("time must be positive")
+    if not pbs_select and hours >= 24:
+        days, hours = divmod(hours, 24)
+        return f"{days}:{hours:02d}:{minutes:02d}:{seconds:02d}"
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 
 def read_queue_limits(queue, path=None):
@@ -101,20 +121,34 @@ def queue_properties(queue):
     return properties
 
 
-def read_pbs_nodes(node_info, properties):
+def read_pbs_nodes(node_info, properties, host_group=None):
     """Select eligible nodes and read their capacities, without counting jobs."""
     nodes = []
+    hosts = set()
+    if host_group is not None and not re.fullmatch(r"[a-zA-Z0-9_.-]+", host_group):
+        raise ValueError("unsupported default_chunk.host_group: " + host_group)
     for name, node in records(node_info).items():
         states = set(node.get("state", "").replace(" ", "").split(","))
-        if states & {"offline", "down", "unknown", "reserve"}:
+        if states & {"offline", "down", "unknown", "state-unknown", "reserve", "maintenance", "provisioning"}:
+            continue
+        if host_group is not None and host_group not in node.get(
+                "resources_available.host_group", "").replace(" ", "").split(","):
             continue
         labels = set(node.get("properties", "").replace(" ", "").split(",")) | {name}
         if not set(properties) <= labels:
             continue
-        total = positive_int(node.get("np", ""))
+        pbs_select = "resources_available.ncpus" in node
+        total = positive_int(node.get("resources_available.ncpus" if pbs_select else "np", ""))
         if total > 999999 or "" in states:
             raise ValueError("invalid node record: " + name)
-        nodes.append(dict(name=name, total=total, states=states, jobs=node.get("jobs", "")))
+        if pbs_select:
+            host = node.get("resources_available.host", name)
+            if host in hosts:
+                raise ValueError("multiple eligible vnodes per host are not supported: " + host)
+            hosts.add(host)
+        nodes.append(dict(name=name, total=total, states=states, jobs=node.get("jobs", ""),
+                          pbs_select=pbs_select, assigned=node.get("resources_assigned.ncpus", ""),
+                          sharing=node.get("sharing", "default_shared")))
     if not nodes:
         raise ValueError("no eligible nodes found")
     return nodes
@@ -150,7 +184,7 @@ def omp_bounds(value, max_ppn):
 
 
 class BatchJob:
-    """A TORQUE job specification. Methods return snapshots/results, not hidden state.
+    """A PBS job specification. Methods return snapshots/results, not hidden state.
 
     command: Bash source string, or a sequence of literal command arguments.
     mpi/omp: None disables it; "auto" requests automatic sizing.
@@ -224,9 +258,7 @@ class BatchJob:
         for key in ("enabled", "started"):
             if queue.get(key, "True") != "True":
                 raise ValueError(f"queue {self.queue}: {key} is not True")
-        walltime = self.walltime if self.walltime is not None else queue.get("resources_default.walltime", "")
-        if not re.fullmatch(r"[0-9]+:[0-5][0-9]:[0-5][0-9]", walltime) or not re.search(r"[1-9]", walltime):
-            raise ValueError("time must be positive HH:MM:SS (hours may exceed 24)")
+        format_walltime(self.walltime)  # Validate before querying nodes; omission defers to PBS.
         node_limit = min(cpu_limit, self.limits.get("max_nodes", cpu_limit))
         for key in ("resources_max.nodect", "resources_max.nodes"):
             if key in queue:
@@ -234,12 +266,31 @@ class BatchJob:
         if self.nodes and self.ppn and self.nodes * self.ppn > cpu_limit:
             raise ValueError(f"queue {self.queue}: nodes={self.nodes} * ppn={self.ppn} exceeds CPU limit {cpu_limit}")
         properties = queue_properties(queue)
-        nodes = read_pbs_nodes(query("pbsnodes", "-a"), properties)
-        return dict(walltime=walltime, cpu_limit=cpu_limit, node_limit=node_limit, properties=properties, nodes=nodes)
+        host_group = queue.get("default_chunk.host_group")
+        nodes = read_pbs_nodes(query("pbsnodes", "-a"), properties, host_group)
+        formats = {node["pbs_select"] for node in nodes}
+        if len(formats) != 1:
+            raise ValueError("mixed PBS node formats are not supported")
+        pbs_select = nodes[0]["pbs_select"]
+        if pbs_select and properties:
+            raise ValueError("legacy node properties cannot be combined with PBS select syntax")
+        return dict(walltime=format_walltime(self.walltime, pbs_select),
+                    cpu_limit=cpu_limit, node_limit=node_limit,
+                    properties=properties, nodes=nodes, pbs_select=pbs_select, host_group=host_group)
 
     def count_free_slots(self, node):
         """Count unallocated slots in the fetched snapshot, without querying again."""
         name, total = node["name"], node["total"]
+        capacity = min(total, self.max_ppn or total)
+        if node.get("pbs_select"):
+            # PBS job entries describe MPI slots, which need not equal allocated CPUs.
+            assigned = node["assigned"]
+            if not re.fullmatch(r"[0-9]{1,9}", assigned) or int(assigned) > total:
+                raise ValueError("invalid resources_assigned.ncpus on " + name)
+            used = int(assigned)
+            if node["sharing"] not in {"default_shared", "ignore_excl"} and used:
+                return 0
+            return max(0, capacity - used) if node["states"] <= {"free"} else 0
         # TORQUE may report 0-8,12-30/job and repeat slots. Count allocations,
         # not load averages: a node marked 'free' may still have running jobs.
         occupied = set()
@@ -256,7 +307,6 @@ class BatchJob:
             occupied.update(range(first, last + 1))
         # Count all occupied slots before applying the local capacity cap:
         # slots above the cap may still compete for the same physical cores.
-        capacity = min(total, self.max_ppn or total)
         return max(0, capacity - len(occupied)) if node["states"] <= {"free", "job-sharing"} else 0
 
     def select_resources(self, capacities, cpu_limit, node_limit):
@@ -335,15 +385,24 @@ class BatchJob:
             return self.optimize_resources(capacities, base[1], cpu_limit, node_limit)
         return self.allocate_parallelism([base], omp_bounds(self.omp, base[1]))
 
+    def resource_request(self, resources, allocation):
+        """Use native PBS syntax, keeping each requested node on a separate host."""
+        nodes, ppn, ranks, threads = allocation
+        if resources.get("pbs_select"):
+            per_node = ppn // threads if self.mpi is not None else 1
+            request = f"select={nodes}:ncpus={ppn}:mpiprocs={per_node}:ompthreads={threads}"
+            if resources.get("host_group"):
+                request += ":host_group=" + resources["host_group"]
+            return request + ",place=scatter"
+        return "nodes=" + ":".join([str(nodes)] + resources["properties"] + [f"ppn={ppn}"])
+
     def render(self, resources=None):
         """Fill the adjacent PBS template; paths and command arguments are quoted."""
         if resources is None:
             resources = self.read_resources()
         allocation = self.plan(resources)
         command = self.command
-        properties = resources["properties"]
         nodes, ppn, ranks, threads = allocation
-        node_request = ":".join([str(nodes)] + properties + ["ppn=" + str(ppn)])
         initialization = []
         if self.conda is not None:
             initialization.append('. "$HOME/.config/bash/envman.sh"')
@@ -356,8 +415,11 @@ class BatchJob:
             command = ["mpirun", "-n", str(ranks), "--map-by",
                        f"ppr:{ppn // threads}:node:PE={threads}"] + command
         template_path = Path(__file__).resolve().parent / "templates" / "mkjob.pbs.sh.tmpl"
+        walltime = format_walltime(resources["walltime"], resources.get("pbs_select", False))
         return template_path.read_text(encoding="utf-8").format(
-            queue=self.queue, node_request=node_request, walltime=resources["walltime"], name=self.name,
+            queue=self.queue, resource_request=self.resource_request(resources, allocation),
+            walltime_directive=f"#PBS -l walltime={walltime}\n" if walltime is not None else "",
+            name=self.name,
             directory=shlex.quote(str(self.directory)),
             initialization="".join(line + "\n" for line in initialization),
             command=" ".join(map(shlex.quote, command)),
@@ -380,7 +442,23 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""Default: largest feasible ppn, then as many nodes as the queue allows.
+        epilog="""Examples (generate only; replace queue, environment and paths as needed):
+  # Python command with conda and a setup script
+  mkjob 'python run_mcmc.py test1.out' -q mini -n mcmc_test1 -t 10:00:00 -d "$PWD" -c fastnc -s setup.sh
+
+  # MPI: use the queue's maximum feasible CPU allocation
+  mkjob 'hostname' -q mini -n check_mpi --mpi
+
+  # OpenMP: one node, eight threads
+  mkjob 'python run_mcmc.py test1.out' -q mini -n check_omp --omp 8
+
+  # MPI + OpenMP: choose from free slots, with 2-4 threads per process
+  mkjob 'python run_mcmc.py test1.out' -q mini -n check_opt --mpi --omp '>=2,<=4' --opt
+
+  # Fixed allocation and literal arguments, without a Bash command wrapper
+  mkjob -q mini -n check_fixed --nodes 1 --ppn 8 --mpi 4 --omp 2 -- python run_mcmc.py test1.out
+
+Default: largest feasible ppn, then as many nodes as the queue allows.
 --opt chooses unspecified nodes/ppn jointly using currently unallocated CPU slots.
 scripts/batch/queues.csv optionally caps ppn/nodes/CPUs for WORK_HOST and the queue.
 Explicit counts/ranges stay fixed. Immediate start is not guaranteed.
@@ -391,12 +469,17 @@ MPI uses Open MPI mapping. Without MPI/OMP options, COMMAND runs unchanged.
 Jobs load ~/.bashrc, enter DIR, activate conda, source SETUP_FILE, run COMMAND.
 COMMAND is Bash code interpreted only when the job runs. Alternatively, use
 options followed by -- COMMAND ARG... to preserve literal argument boundaries.
-Requires Python 3 and TORQUE qstat/pbsnodes on the target login node.""",
+PBS node output selects TORQUE nodes/ppn or PBS Professional/OpenPBS select syntax.
+Time accepts HH:MM:SS or D:HH:MM:SS: -t 7:00:00:00 and -t 168:00:00 both mean 7 days.
+TORQUE output uses days for 24h or longer; PBS Professional/OpenPBS uses total hours.
+Without -t, omit the walltime directive and leave defaults to PBS.
+Requires Python 3 and qstat/pbsnodes on the target login node.""",
     )
     parser.add_argument("command", nargs="?", help="Bash command, quoted as one argument")
     parser.add_argument("-q", "--queue", required=True)
     parser.add_argument("-n", "--name", default="job")
-    parser.add_argument("-t", "--time", "--walltime", dest="walltime", help="HH:MM:SS; default: queue default")
+    parser.add_argument("-t", "--time", "--walltime", dest="walltime",
+                        help="HH:MM:SS or D:HH:MM:SS; omitted: leave walltime to PBS")
     parser.add_argument("-d", "--directory", "--workdir", default=os.getcwd())
     parser.add_argument("-c", "--conda", help="conda environment to activate in the job")
     parser.add_argument("-s", "--setup", metavar="FILE", help="Bash setup file (relative to the current directory)")

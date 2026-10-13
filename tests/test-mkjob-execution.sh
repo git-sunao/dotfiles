@@ -91,7 +91,7 @@ generate --output "$test_root/job.pbs" --name sample_job --setup "$test_root/set
 /bin/bash -n "$test_root/job.pbs"
 grep -qx '#PBS -q sample' "$test_root/job.pbs"
 grep -qx '#PBS -l nodes=2:ppn=3' "$test_root/job.pbs"
-grep -qx '#PBS -l walltime=168:00:00' "$test_root/job.pbs"
+grep -qx '#PBS -l walltime=7:00:00:00' "$test_root/job.pbs"
 if grep -q '^#PBS -V' "$test_root/job.pbs"; then exit 1; fi
 run_job "$test_root/job.pbs"
 [ "$(cat "$test_root/ran")" = ran ]
@@ -147,7 +147,7 @@ for invalid in 0 -1 01 1.5 '2:ppn=8'; do reject --nodes "$invalid" -- true; done
 reject --ppn 0 -- true
 reject --walltime 00:00:00 -- true
 reject --walltime 01:60:00 -- true
-reject --walltime 7:00:00:00 -- true
+reject --walltime 7:24:00:00 -- true
 reject --queue $'sample\n#PBS -V' -- true
 reject --name $'job\n#PBS -V' -- true
 reject --setup "$test_root/missing" -- true

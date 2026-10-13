@@ -1,9 +1,8 @@
 #!/bin/bash
 #PBS -S /bin/bash
 #PBS -q {queue}
-#PBS -l nodes={node_request}
-#PBS -l walltime={walltime}
-#PBS -N {name}
+#PBS -l {resource_request}
+{walltime_directive}#PBS -N {name}
 #PBS -m n
 
 if [ "${{BASH_SOURCE[0]}}" != "$0" ]; then

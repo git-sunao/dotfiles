@@ -7,3 +7,14 @@ gw,mini50,28,,28
 gw,small,28,,504
 gw,large,28,,1000
 gw,massive_distrib,28,,1
+gfarm,tiny,20,1,1
+gfarm,mini,20,1,20
+gfarm,small,20,6,120
+gfarm,large,20,50,1000
+gfarm,all,20,60,1200
+idark,tiny,52,1,1
+idark,mini,52,1,52
+idark,small,52,4,208
+idark,mini2,56,2,56
+idark,mini_B,52,1,52
+idark,large,52,22,1144
