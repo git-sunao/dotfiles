@@ -10,7 +10,6 @@ if [ "${{BASH_SOURCE[0]}}" != "$0" ]; then
     printf 'Execute this job script; do not source it.\n' >&2
     return 0
 fi
-set -e
 trap 'job_status=$?; printf "finished %s exit=%s\n" "$(date -u +%FT%TZ)" "$job_status"; exit "$job_status"' EXIT
 printf 'started %s\n' "$(date -u +%FT%TZ)"
 . "$HOME/.bashrc"

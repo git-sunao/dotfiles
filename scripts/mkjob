@@ -165,7 +165,7 @@ class BatchJob:
             if not command:
                 raise ValueError("command must not be empty")
             subprocess.run(["/bin/bash", "-n", "-c", command], check=True)
-            command = ["/bin/bash", "-e", "-c", command]
+            command = ["/bin/bash", "-c", command]
         else:
             command = list(command)
         if not command or not command[0] or not all(isinstance(arg, str) for arg in command):

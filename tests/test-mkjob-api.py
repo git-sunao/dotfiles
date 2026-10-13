@@ -249,7 +249,7 @@ class BatchJobTests(unittest.TestCase):
             self.assertEqual(allocation, (2, 4, 4, 2))
             script = job.render(resources)
             self.assertEqual(script, job.render(resources))
-            self.assertEqual(job.command, ["/bin/bash", "-e", "-c", 'printf "%s" "{queue}"'])
+            self.assertEqual(job.command, ["/bin/bash", "-c", 'printf "%s" "{queue}"'])
             path = job.write(Path(directory) / "job.pbs", resources=resources)
             self.assertEqual(path.read_text(), script)
             with self.assertRaises(ValueError):

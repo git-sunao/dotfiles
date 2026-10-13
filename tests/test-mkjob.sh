@@ -231,8 +231,8 @@ grep -q 'exit=0$' "$fixture/job-log"
 printf 'return 29\n' > "$fixture/setup file.sh"
 status=0
 /bin/bash "$fixture/run.pbs" > "$fixture/job-log" || status=$?
-[ "$status" -eq 29 ]
-grep -q 'exit=29$' "$fixture/job-log"
+[ "$status" -eq 0 ]
+grep -q 'exit=0$' "$fixture/job-log"
 [ ! -e "$fixture/unexpected-execution" ]
 cat > "$fixture/bin/mpirun" <<'SH'
 #!/bin/bash
@@ -247,6 +247,10 @@ generate 'printf "%s\n" "$OMP_NUM_THREADS" > mpi-result.txt' --mpi --omp 4
 sed 's|"$HOME/.bashrc"|"$PBS_FIXTURE/bashrc"|' "$fixture/job.pbs" > "$fixture/run.pbs"
 /bin/bash "$fixture/run.pbs" > "$fixture/job-log"
 [ "$(cat "$fixture/work space/mpi-result.txt")" = 4 ]
+generate 'python3 -c '\''import os; print(os.environ["OMP_NUM_THREADS"])'\'' > python-result.txt' --mpi --omp 4
+sed 's|"$HOME/.bashrc"|"$PBS_FIXTURE/bashrc"|' "$fixture/job.pbs" > "$fixture/run.pbs"
+/bin/bash "$fixture/run.pbs" > "$fixture/job-log"
+[ "$(cat "$fixture/work space/python-result.txt")" = 4 ]
 generate 'exit 43' --mpi --omp 4
 sed 's|"$HOME/.bashrc"|"$PBS_FIXTURE/bashrc"|' "$fixture/job.pbs" > "$fixture/run.pbs"
 status=0

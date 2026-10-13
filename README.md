@@ -100,7 +100,8 @@ default file use PBS values. Configured limits can only lower live PBS limits.
 `max_ppn` caps per-node capacity; all occupied slots are subtracted from that cap.
 Explicit requests exceeding limits are rejected. See the private README for values.
 Jobs load `.bashrc`, enter `-d`, activate `-c`, source `-s FILE`, then run the
-command. Logs use PBS defaults. Currently only TORQUE/PBS is supported;
+command. Generated jobs do not enable `set -e`; the final command sets the exit
+status. Logs use PBS defaults. Currently only TORQUE/PBS is supported;
 Slurm support is planned. The old `make-pbs` command is removed. No automatic
 submission is provided.
 The template is `scripts/templates/mkjob.pbs.sh.tmpl`; no PATH changes are needed.

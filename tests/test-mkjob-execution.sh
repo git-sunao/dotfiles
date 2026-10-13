@@ -108,18 +108,23 @@ for status in 7 43; do
 done
 printf 'return 29\n' > "$test_root/failing-setup.sh"
 generate --output "$test_root/setup-failure.pbs" --setup "$test_root/failing-setup.sh" \
-    -- touch "$test_root/must-not-run"
+    -- touch "$test_root/continued"
 actual=0
 run_job "$test_root/setup-failure.pbs" || actual=$?
-[ "$actual" -eq 29 ]
-[ ! -e "$test_root/must-not-run" ]
+[ "$actual" -eq 0 ]
+[ -e "$test_root/continued" ]
+rm "$test_root/continued"
 printf 'return 31\n' > "$PBS_TEST_BASHRC"
 actual=0
 run_job "$test_root/setup-failure.pbs" || actual=$?
-[ "$actual" -eq 31 ]
-[ ! -e "$test_root/must-not-run" ]
+[ "$actual" -eq 0 ]
+[ -e "$test_root/continued" ]
 printf 'export PBS_TEST_HOST=loaded\n' > "$PBS_TEST_BASHRC"
-printf 'PASS: command and initialization failures retain their exit status and stop the job\n'
+generate 'false; printf "continued\\n"' --output "$test_root/continue-command.pbs"
+run_job "$test_root/continue-command.pbs"
+grep -qx continued "$test_root/job-log"
+grep -q 'exit=0$' "$test_root/job-log"
+printf 'PASS: final command status is preserved; initialization and intermediate failures do not force exit\n'
 
 for literal_command in if PBS_TEST_NOT_A_COMMAND=value; do
     generate --output "$test_root/literal-$literal_command.pbs" -- "$literal_command"
