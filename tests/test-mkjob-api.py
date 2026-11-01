@@ -4,6 +4,8 @@ from pathlib import Path
 from itertools import product
 import os
 import runpy
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import Mock, patch
@@ -77,6 +79,51 @@ class BatchJobTests(unittest.TestCase):
 
     def set_queues(self, rows):
         self.queue_file.write_text("server,queue,max_ppn,max_nodes,max_cpus\n" + rows)
+
+    def test_initialization_cli_runs_once_before_mpi(self):
+        # Simulate two MPI ranks and check setup ordering and inherited environment.
+        for option in ("--init", "--ini"):
+            with self.subTest(option=option), tempfile.TemporaryDirectory() as directory:
+                work = Path(directory)
+                home = work / "home"
+                home.mkdir()
+                (home / ".bashrc").write_text("")
+                binaries = work / "bin"
+                binaries.mkdir()
+                launcher = binaries / "mpirun"
+                launcher.write_text('#!/bin/bash\nshift 4\n"$@" || exit $?\n"$@"\n')
+                launcher.chmod(0o755)
+                common = 'printf "init\\n" >> sequence.txt\nexport INIT_VALUE=ready\n'
+                command = 'printf "rank %s\\n" "$INIT_VALUE" >> sequence.txt'
+                pbs = work / "job.pbs"
+                argv = ["mkjob", command, option, common, "-q", "sample", "-d", str(work),
+                        "-o", str(pbs), "--nodes", "1", "--ppn", "2", "--mpi", "2", "--omp", "1"]
+                with patch.object(sys, "argv", argv):
+                    job, output = mkjob["parse_args"]()
+                resources = dict(cpu_limit=2, node_limit=1, properties=[], walltime=None,
+                                 nodes=[dict(name="fake", total=2, states={"free"}, jobs="")])
+                job.write(output, resources=resources)
+                subprocess.run(["bash", "-n", str(pbs)], check=True)
+                subprocess.run(["bash", str(pbs)], check=True, capture_output=True, text=True,
+                               env=dict(os.environ, HOME=str(home),
+                                        PATH=str(binaries)+os.pathsep+os.environ["PATH"]))
+                self.assertEqual((work/"sequence.txt").read_text().splitlines(),
+                                 ["init", "rank ready", "rank ready"])
+
+    def test_mpi_flavors_and_queue_file_cli(self):
+        # Both installed MPI dialects use the same resource allocation and queue override.
+        resources = dict(cpu_limit=2, node_limit=1, properties=[], walltime=None,
+                         nodes=[dict(name="fake", total=2, states={"free"}, jobs="")])
+        for flavor, launcher in (("openmpi", "mpirun -n 2 --map-by ppr:2:node:PE=1"),
+                                 ("portable", "mpiexec -n 2")):
+            with self.subTest(flavor=flavor), patch.object(sys, "argv", [
+                    "mkjob", "hostname", "-q", "sample", "--mpi", "--omp", "1",
+                    "--queue-file", str(self.queue_file), "--mpi-flavor", flavor]):
+                job, _ = mkjob["parse_args"]()
+                self.assertEqual(job.plan(resources), (1, 2, 2, 1))
+                self.assertIn(launcher, job.render(resources))
+        with self.assertRaisesRegex(ValueError, "mpi_flavor"):
+            BatchJob(["true"], queue="sample", mpi_flavor="unsupported")
 
     def test_per_node_capacity_cap(self):
         resources = dict(cpu_limit=112, node_limit=4, properties=[], walltime="01:00:00",

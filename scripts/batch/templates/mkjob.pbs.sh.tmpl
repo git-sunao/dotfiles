@@ -12,7 +12,7 @@ fi
 trap 'job_status=$?; printf "finished %s exit=%s\n" "$(date -u +%FT%TZ)" "$job_status"; exit "$job_status"' EXIT
 printf 'started %s\n' "$(date -u +%FT%TZ)"
 . "$HOME/.bashrc"
-cd -- {directory}
+cd -- {directory} || exit 1
 {initialization}
 job_command=({command})
 "${{job_command[@]}}"

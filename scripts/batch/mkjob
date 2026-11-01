@@ -188,13 +188,15 @@ class BatchJob:
 
     command: Bash source string, or a sequence of literal command arguments.
     mpi/omp: None disables it; "auto" requests automatic sizing.
-    queue_file: optional override for scripts/batch/queues.csv, selected by WORK_HOST.
+    queue_file: optional override for adjacent queues.csv, selected by WORK_HOST.
+    initialization: Bash commands run once before conda/setup and MPI launch.
+    mpi_flavor: "openmpi" uses mpirun --map-by; "portable" uses mpiexec -n.
     Constructing a BatchJob validates inputs but does not contact the scheduler.
     """
 
     def __init__(self, command, *, queue, name="job", walltime=None, directory=None,
                  conda=None, setup=None, nodes=None, ppn=None, mpi=None, omp=None,
-                 opt=False, queue_file=None):
+                 opt=False, queue_file=None, initialization="", mpi_flavor="openmpi"):
         if isinstance(command, str):
             if not command:
                 raise ValueError("command must not be empty")
@@ -235,6 +237,11 @@ class BatchJob:
             setup = Path(setup).absolute()
             if not setup.is_file() or not os.access(setup, os.R_OK):
                 raise ValueError("setup must be a readable file")
+        # Select the launcher dialect without embedding site-specific commands.
+        if mpi_flavor not in ("openmpi", "portable"):
+            raise ValueError("mpi_flavor must be openmpi or portable")
+        self.initialization = initialization
+        self.mpi_flavor = mpi_flavor
         self.command = command
         self.queue = queue
         self.name = name
@@ -403,7 +410,7 @@ class BatchJob:
         allocation = self.plan(resources)
         command = self.command
         nodes, ppn, ranks, threads = allocation
-        initialization = []
+        initialization = [self.initialization] if self.initialization else []
         if self.conda is not None:
             initialization.append('. "$HOME/.config/bash/envman.sh"')
             initialization.append(f"conda activate {shlex.quote(self.conda)}")
@@ -412,8 +419,11 @@ class BatchJob:
         if self.mpi is not None or self.omp is not None:
             initialization.append(f"export OMP_NUM_THREADS={threads}")
         if self.mpi is not None:
-            command = ["mpirun", "-n", str(ranks), "--map-by",
-                       f"ppr:{ppn // threads}:node:PE={threads}"] + command
+            if self.mpi_flavor == "openmpi":
+                command = ["mpirun", "-n", str(ranks), "--map-by",
+                           f"ppr:{ppn // threads}:node:PE={threads}"] + command
+            else:
+                command = ["mpiexec", "-n", str(ranks)] + command
         template_path = Path(__file__).resolve().parent / "templates" / "mkjob.pbs.sh.tmpl"
         walltime = format_walltime(resources["walltime"], resources.get("pbs_select", False))
         return template_path.read_text(encoding="utf-8").format(
@@ -438,7 +448,8 @@ class BatchJob:
         return path
 
 
-def parse_args():
+def make_parser():
+    """Share scheduler CLI options with thin application wrappers."""
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -466,18 +477,31 @@ def parse_args():
     parser.add_argument("-d", "--directory", "--workdir", default=os.getcwd(),
                         help="job working directory; default: current directory")
     parser.add_argument("-c", "--conda", help="conda environment to activate in the job")
+    # Expose the existing pre-launch block without a separate application wrapper.
+    parser.add_argument("--init", "--ini", dest="initialization", default="", metavar="COMMANDS",
+                        help="Bash commands run once after cd and before conda/setup/MPI; quote the whole block")
     parser.add_argument("-s", "--setup", metavar="FILE", help="Bash setup file (relative to the current directory)")
     parser.add_argument("-o", "--output", help="output filename; default: NAME.pbs; never overwrite")
     parser.add_argument("--nodes", help="node count; default: maximize after choosing ppn (OMP alone: 1)")
     parser.add_argument("--ppn", help="CPU slots per node; default: largest feasible count")
     parser.add_argument("--mpi", nargs="?", const="auto", metavar="N",
-                        help="Open MPI ranks; without N: auto; omitted: no mpirun")
+                        help="MPI ranks; without N: auto; omitted: no MPI launcher")
     parser.add_argument("--omp", nargs="?", const="auto", metavar="N_OR_RANGE",
                         help="threads per process or quoted range, e.g. '>=2,<=4' (=>/=< also accepted); "
                              "without a value: auto. MPI and OMP cannot both be auto")
     parser.add_argument("--opt", action="store_true",
                         help="adjust unspecified counts to free CPU slots; immediate start is not guaranteed")
 
+    # Select site caps and MPI dialect without embedding server-specific launch commands.
+    parser.add_argument("--queue-file", help="Override the server/queue capacity CSV")
+    parser.add_argument("--mpi-flavor", choices=["portable", "openmpi"], default="openmpi")
+
+    return parser
+
+
+def parse_args():
+    # Preserve the standalone CLI, including its literal-argument separator.
+    parser = make_parser()
     arguments = sys.argv[1:]
     command = []
     if "--" in arguments:
