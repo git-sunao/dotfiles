@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+
+# Require exactly one numeric TCP port argument.
+if [ "$#" -ne 1 ]; then
+    printf 'Usage: jlstop PORT\n' >&2
+    exit 2
+fi
+case "$1" in
+    ''|*[!0-9]*) printf 'Usage: jlstop PORT\n' >&2; exit 2 ;;
+esac
+
+# Interpret the port as decimal and validate its range.
+if [ "${#1}" -gt 5 ]; then
+    printf 'Port must be between 1 and 65535.\n' >&2
+    exit 2
+fi
+port=$((10#$1))
+if (( port < 1 || port > 65535 )); then
+    printf 'Port must be between 1 and 65535.\n' >&2
+    exit 2
+fi
+
+# Inspect actual listeners rather than Jupyter's stored server records.
+if ! command -v ss >/dev/null 2>&1; then
+    printf 'This script requires the Linux ss command.\n' >&2
+    exit 1
+fi
+
+# Remove the header explicitly for compatibility with older ss versions.
+listeners="$(ss -ltnp "sport = :$port")" || exit 1
+listeners="$(printf '%s\n' "$listeners" | sed '1d')"
+
+if [ -z "$listeners" ]; then
+    printf 'No server is listening on port %s on this host.\n' "$port"
+    exit 0
+fi
+
+# Collect unique listener PIDs, accounting for IPv4 and IPv6 entries.
+pids="$(
+    printf '%s\n' "$listeners" |
+        grep -oE 'pid=[0-9]+' |
+        cut -d= -f2 |
+        sort -un
+)"
+if [ -z "$pids" ]; then
+    printf 'Port %s is in use, but its process could not be identified.\n' \
+        "$port" >&2
+    exit 1
+fi
+
+# Verify ownership and the Jupyter command before stopping any process.
+current_uid="$(id -u)"
+for pid in $pids; do
+    owner="$(ps -p "$pid" -o uid= | tr -d '[:space:]')"
+    args="$(ps -p "$pid" -o args=)"
+    if [ "$owner" != "$current_uid" ] ||
+        ! printf '%s\n' "$args" |
+            grep -Eq '(^|[[:space:]/])jupyter(-lab|-server|-notebook|[[:space:]]+(lab|server|notebook))([[:space:]]|$)'
+    then
+        printf 'Refusing to stop an unverified Jupyter process: PID %s\n' \
+            "$pid" >&2
+        printf '%s\n' "$args" >&2
+        exit 1
+    fi
+done
+
+# Request normal shutdown so Jupyter can clean up its kernels.
+for pid in $pids; do
+    printf 'Stopping Jupyter: port %s, PID %s\n' "$port" "$pid"
+    kill -TERM "$pid" || exit 1
+done
+
+# Wait up to 20 seconds for the listening socket to close.
+for (( attempt=0; attempt<100; attempt++ )); do
+    # Remove the header before checking whether any listeners remain.
+    listeners="$(ss -ltn "sport = :$port")" || exit 1
+    listeners="$(printf '%s\n' "$listeners" | sed '1d')"
+    if [ -z "$listeners" ]; then
+        printf 'Port %s is now closed.\n' "$port"
+        exit 0
+    fi
+    sleep 0.2
+done
+
+# Report incomplete shutdown without forcing termination.
+printf 'Port %s is still listening; inspect the Jupyter log.\n' "$port" >&2
+exit 1

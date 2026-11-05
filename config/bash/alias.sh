@@ -13,7 +13,6 @@ alias goc='cd -- "$HOME/Documents/Codex"'
 
 # Jupyter alias
 alias jl="jupyter lab"
-alias jlp="jupyter lab --ip=localhost --no-browser --port"
 alias jlab='"$(conda info --base)"/bin/jupyter-lab --no-browser --port'
 alias gitslf='git status --porcelain | grep ^[AM] | sed -e "s,^\S ,,g" | xargs -r ls -hsS'
 
