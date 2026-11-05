@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+# Read the known runtime location without starting Python or Jupyter.
+runtime_dir="${JUPYTER_RUNTIME_DIR:-$HOME/.local/share/jupyter/runtime}"
+
+# Require jq for correct JSON parsing and URL encoding.
+if ! command -v jq >/dev/null 2>&1; then
+    printf 'This command requires jq.\n' >&2
+    exit 1
+fi
+
+# Collect existing server records without leaving an unmatched wildcard.
+shopt -s nullglob
+records=("$runtime_dir"/jpserver-*.json)
+if [ "${#records[@]}" -eq 0 ]; then
+    printf 'No server records found in %s\n' "$runtime_dir"
+    exit 0
+fi
+
+# Display each working directory followed by its connection URL.
+jq -r '
+  "\(.root_dir) [PID \(.pid)]",
+  (.url + (if (.token // "") != "" then
+    (if (.url | contains("?")) then "&" else "?" end) +
+    "token=" + (.token | @uri)
+  else "" end)),
+  ""
+' "${records[@]}"
