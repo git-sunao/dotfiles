@@ -71,6 +71,13 @@ initialization. `CONDDIR` and `MINIFORGEDIR` do not select installations.
 An optional `config/bash/interactive.local.sh` holds interactive-only additions.
 Both local files are Git-ignored. Only source trusted Bash files.
 
+Loading `.bashrc` initializes host-configured conda/mamba even in non-interactive
+shells. Aliases, prompt and terminal settings remain interactive-only. PBS scripts
+can source `"$HOME/.bash_profile"` and then `conda activate <environment>`; no
+installation path belongs in the job script. A plain Bash script does not load
+these files automatically. SSH command sessions that read `.bashrc` also incur
+initialization cost, so keep host settings and successful hooks silent.
+
 ## Existing installations
 
 Keep the current shell open, update the checkout, and run the same setup commands.

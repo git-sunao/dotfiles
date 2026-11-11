@@ -12,16 +12,17 @@ if [ -d "$_dotfiles_bin" ]; then
 fi
 unset _dotfiles_bin
 
-# SSH commands may read .bashrc, but must not initialize interactive tools.
+# Initialize host-configured conda/mamba for interactive shells and batch jobs.
+# A tool initialization failure must not prevent the remaining shell setup.
+if ! . "$HOME/.config/bash/envman.sh"; then
+    printf '.bashrc: conda/mamba initialization failed; continuing shell setup\n' >&2
+fi
+
+# Aliases, display and terminal settings belong only to interactive shells.
 case $- in
     *i*) ;;
     *) return 0 ;;
 esac
-
-# A tool initialization failure must not prevent basic interactive shell setup.
-if ! . "$HOME/.config/bash/envman.sh"; then
-    printf '.bashrc: conda/mamba initialization failed; continuing shell setup\n' >&2
-fi
 
 for _dotfiles_config in package alias display typing; do
     . "$HOME/.config/bash/$_dotfiles_config.sh" || return

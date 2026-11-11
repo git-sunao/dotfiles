@@ -127,6 +127,25 @@ sed 's|\$HOME/.config/bash|$CONFIG_DIR|g' "$source_dir/../../rc/bashrc" > "$test
 printf 'export STARTUP_PACKAGE=loaded\n' > "$config_dir/package.sh"
 printf 'export STARTUP_ALIAS=loaded\n' > "$config_dir/alias.sh"
 printf 'export STARTUP_TYPING=loaded\n' > "$config_dir/typing.sh"
+
+# Non-interactive profiles initialize tools once, without loading terminal settings.
+printf '. "$TEST_ROOT/bashrc"\n' > "$test_root/bash_profile"
+printf 'export STARTUP_LOCAL=loaded\n' > "$config_dir/interactive.local.sh"
+run '
+    conda_calls=$(wc -l < "$TEST_ROOT/conda.calls")
+    mamba_calls=$(wc -l < "$TEST_ROOT/mamba.calls")
+    . "$TEST_ROOT/bash_profile"
+    . "$TEST_ROOT/bash_profile"
+    declare -F conda mamba >/dev/null
+    [ "$WORK_HOST" = test ]
+    [ "$(wc -l < "$TEST_ROOT/conda.calls")" -eq "$((conda_calls + 1))" ]
+    [ "$(wc -l < "$TEST_ROOT/mamba.calls")" -eq "$((mamba_calls + 1))" ]
+    [ -z "${STARTUP_PACKAGE+x}${STARTUP_ALIAS+x}${STARTUP_TYPING+x}${STARTUP_LOCAL+x}${PS1+x}" ]
+' > "$test_root/noninteractive.stdout" 2> "$test_root/noninteractive.stderr"
+[ ! -s "$test_root/noninteractive.stdout" ]
+[ ! -s "$test_root/noninteractive.stderr" ]
+printf 'PASS: non-interactive profile initializes tools once, silently, without interactive settings\n'
+
 /usr/bin/env -i HOME="$HOME" PATH=/usr/bin:/bin TERM=xterm TEST_ROOT="$test_root" CONFIG_DIR="$config_dir" /bin/bash --noprofile --norc -iec '
     export FAIL_MAMBA=1
     . "$TEST_ROOT/bashrc" 2> "$TEST_ROOT/startup.error"

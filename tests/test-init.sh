@@ -153,6 +153,7 @@ printf 'PASS: repeated runs, relative links, spaces, unrelated apps, and login p
 
 # Exercise real startup through the per-app symlink, without real conda or HOME changes.
 sed 's|\$HOME|$TEST_HOME|g' "$repo_dir/rc/bashrc" > "$fixture_repo/rc/bashrc"
+cp "$repo_dir/config/bash/envman.sh" "$fixture_repo/config/bash/envman.sh"
 printf 'export WORK_HOST=fixture\nCONDA_ROOTS=()\n' > "$fixture_repo/config/bash/host.sh"
 mkdir -p "$fixture_repo/scripts/example"
 printf '#!/bin/bash\nprintf "linked command\\n"\n' > "$fixture_repo/scripts/example/check-link"
